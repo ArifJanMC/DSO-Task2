@@ -8,7 +8,7 @@ title = "Gitleaks config for book-catalogue"
 # tags = ["my-app", "token"]
 
 # Исключения (используйте с осторожностью!)
-[allowlist]
+#[allowlist]
 description = "Allow specific false positives or test data"
 # Игнорировать определенные коммиты
 # commits = [
