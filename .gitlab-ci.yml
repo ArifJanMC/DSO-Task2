@@ -304,19 +304,40 @@ dynamic_analysis_zap:
     ZAP_TARGET_URL: ${STAGING_APP_URL}
   script:
     - echo "Starting DAST scan with OWASP ZAP on ${ZAP_TARGET_URL}"
-    - mkdir -p /zap/wrk
-    - chmod -R 777 /zap/wrk
-    - echo "Working directory is $(pwd)"
-    - echo "Current directory contents:"
-    - ls -la
-    # Use hardcoded filenames with full paths
-    - zap-baseline.py -t ${ZAP_TARGET_URL} -J ${CI_PROJECT_DIR}/gl-dast-report.json -r ${CI_PROJECT_DIR}/zap-dast-report.html -d
-    - echo "Files in project directory after scan:"
+    
+    # Create a temporary file with minimal configuration for ZAP 
+    - echo "
+      ---
+      env:
+        contexts:
+          - name: baseline
+            urls: 
+              - ${ZAP_TARGET_URL}
+      jobs:
+        - type: spider
+          parameters:
+            url: ${ZAP_TARGET_URL}
+            maxDuration: 1
+        - type: passiveScan-wait
+        - type: report
+          parameters:
+            template: traditional-json
+            reportFile: gl-dast-report.json
+            reportDir: ${CI_PROJECT_DIR}
+        - type: report
+          parameters:
+            template: traditional-html
+            reportFile: zap-dast-report.html
+            reportDir: ${CI_PROJECT_DIR}
+      " > zap-config.yaml
+      
+    # Run ZAP in automation mode directly
+    - zap.sh -cmd -autorun zap-config.yaml
+    
+    # Check if files were created
+    - echo "Contents of project directory:"
     - ls -la ${CI_PROJECT_DIR}
-    - echo "Files in /zap/wrk after scan:"
-    - ls -la /zap/wrk
-    # Find report files anywhere in the system
-    - find / -name "gl-dast-report.json" -o -name "zap-dast-report.html" 2>/dev/null || echo "No report files found"
+    
   artifacts:
     paths:
       - gl-dast-report.json
