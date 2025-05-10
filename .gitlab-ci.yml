@@ -299,20 +299,28 @@ deploy_to_staging:
 # --- DYNAMIC APPLICATION SECURITY TESTING (DAST) STAGE ---
 dynamic_analysis_zap:
   stage: dast_scan
-  image: zaproxy/zap-stable # UPDATED ZAP IMAGE
+  image: zaproxy/zap-stable # Using the new official ZAP image
   variables:
     ZAP_TARGET_URL: ${STAGING_APP_URL}
-  script:
+    ZAP_CI_DIR: "${CI_PROJECT_DIR}/zap_session_data"
+  script: # Standard YAML list for these commands
     - echo "Starting DAST scan with OWASP ZAP on ${ZAP_TARGET_URL}"
     - mkdir -p zap_reports
-    - zap-baseline.py -t ${ZAP_TARGET_URL} -J zap_reports/${ZAP_REPORT_JSON} -r zap_reports/${ZAP_REPORT_HTML} || true
+    - mkdir -p ${ZAP_CI_DIR}
+    - chmod -R 777 ${ZAP_CI_DIR}
+    - zap-baseline.py -t ${ZAP_TARGET_URL} \
+        -J "${CI_PROJECT_DIR}/zap_reports/${ZAP_REPORT_JSON}" \
+        -r "${CI_PROJECT_DIR}/zap_reports/${ZAP_REPORT_HTML}" \
+        -z "-dir ${ZAP_CI_DIR}" \
+        || true
     - echo "DAST scan completed. Reports are in zap_reports/ directory."
   artifacts:
     paths:
       - zap_reports/${ZAP_REPORT_JSON}
       - zap_reports/${ZAP_REPORT_HTML}
+      - zap_session_data/ # Optionally artifact session data for debugging
     when: always
-  allow_failure: true
+  allow_failure: true # Keep as true until DAST is stable and tuned
   needs: ["deploy_to_staging"]
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
