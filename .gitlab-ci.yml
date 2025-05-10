@@ -33,7 +33,7 @@ variables:
   DOCKER_IMAGE_NAME: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
   STAGING_SERVER_IP: "146.59.45.19"
   STAGING_SERVER_USER: "ubuntu"
-  STAGING_SERVER_SSH_PORT: "2222" # <-- ADDED SSH PORT VARIABLE
+  STAGING_SERVER_SSH_PORT: "2222"
   STAGING_APP_URL: "http://test.dot.arifjan.su" # Your staging domain
   STAGING_DEPLOY_PATH: "/home/ubuntu/book_catalog_staging" # Deployment path on staging server
   ZAP_REPORT_JSON: "zap-report.json"
@@ -100,24 +100,16 @@ scan_dependencies:
     - python -m venv venv
     - source venv/bin/activate
     - pip config set global.cache-dir "$(pwd)/.cache/pip"
-    - pip install safety # Installs the latest version of safety
+    - pip install safety
   script:
     - echo "Scanning dependencies for vulnerabilities with Safety..."
-    # Corrected: Use shell redirection '>' to output JSON to a file.
-    # The '|| true' ensures this step doesn't fail the job if vulnerabilities are found,
-    # allowing the report to be generated. The next command will actually cause the failure.
     - safety check -r ${REQUIREMENTS_FILE} --output json > safety-report.json || true
-    # This command will run the check again and exit with a non-zero code if vulnerabilities are found,
-    # thus failing the job as per allow_failure: false.
-    # Safety also prints a deprecation warning for 'check', suggesting 'scan'.
-    # For now, 'check' still works. If you update safety to a much later version,
-    # you might need to switch to 'safety scan --output json > report.json' or similar.
     - safety check -r ${REQUIREMENTS_FILE}
   artifacts:
     paths:
-      - safety-report.json # This should now be created correctly
+      - safety-report.json
     when: always
-  allow_failure: false # Fail pipeline if vulnerabilities are found by the second safety command
+  allow_failure: false
 
 # --- STATIC APPLICATION SECURITY TESTING (SAST) STAGE ---
 static_analysis_bandit:
@@ -147,7 +139,6 @@ scan_for_secrets:
     entrypoint: [""]
   script:
     - echo "Scanning for secrets with Gitleaks..."
-    # Assumes .gitleaks.toml is in the root if you have one.
     - gitleaks detect --source . --report-path gitleaks-report.json --report-format json -v
   artifacts:
     paths:
@@ -164,12 +155,16 @@ build_docker_image:
   services:
     - docker:dind
   before_script:
-    - echo "Logging in to GitLab Container Registry..."
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+    - echo "Current CI_REGISTRY is: $CI_REGISTRY"
+    - echo "Current CI_REGISTRY_USER is: $CI_REGISTRY_USER"
+    - if [ -z "$CI_REGISTRY" ]; then echo "ERROR: CI_REGISTRY is not set!"; exit 1; fi
+    - echo "Logging in to GitLab Container Registry: $CI_REGISTRY"
+    # Use CI_JOB_TOKEN for the password, which is the standard way for CI jobs
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
   script:
     - echo "Building Docker image from ${DOCKERFILE_PATH} with context ${DOCKER_CONTEXT_PATH}..."
     - docker build -t ${DOCKER_IMAGE_NAME} -f ${DOCKERFILE_PATH} ${DOCKER_CONTEXT_PATH}
-    - echo "Pushing Docker image to GitLab Container Registry..."
+    - echo "Pushing Docker image ${DOCKER_IMAGE_NAME} to GitLab Container Registry..."
     - docker push ${DOCKER_IMAGE_NAME}
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_TAG'
@@ -182,6 +177,11 @@ scan_docker_image:
     TRIVY_EXIT_CODE: "1"
     TRIVY_SEVERITY: "HIGH,CRITICAL"
     CI: "true"
+    GIT_STRATEGY: none # Don't need to checkout source code for this job
+  before_script: # Added before_script for login in scan_docker_image
+    - echo "Logging in to GitLab Container Registry: $CI_REGISTRY (for Trivy to pull)"
+    - if [ -z "$CI_REGISTRY" ]; then echo "ERROR: CI_REGISTRY is not set for Trivy!"; exit 1; fi
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
   script:
     - echo "Scanning Docker image ${DOCKER_IMAGE_NAME} for vulnerabilities with Trivy..."
     - trivy image --exit-code $TRIVY_EXIT_CODE --severity $TRIVY_SEVERITY --format gitlab --output trivy-gitlab-report.json ${DOCKER_IMAGE_NAME}
@@ -199,35 +199,21 @@ scan_docker_image:
 # --- DEPLOY TO STAGING STAGE ---
 deploy_to_staging:
   stage: deploy_staging
-  image: alpine # Using a small image with basic tools
+  image: alpine
   before_script:
-    # Install sshpass and OpenSSH client
     - apk add --no-cache sshpass openssh-client rsync
-    # Setup known_hosts to avoid interactive prompt for host key verification
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
-    # Ensure SSH_KNOWN_HOSTS variable is set in GitLab CI/CD settings
-    # You can get this by running `ssh-keyscan -p ${STAGING_SERVER_SSH_PORT} ${STAGING_SERVER_IP}` locally and adding the output to the variable.
     - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
   script:
     - echo "Starting deployment to staging server ${STAGING_SERVER_IP} on port ${STAGING_SERVER_SSH_PORT}..."
-
-    # Prepare docker-compose.staging.yml by substituting the image tag
-    # The DOCKER_IMAGE_NAME variable (e.g., registry.gitlab.com/yourgroup/yourproject:commit_sha) is used here
     - sed "s|\${DOCKER_IMAGE_TO_DEPLOY}|${DOCKER_IMAGE_NAME}|g" docker-compose.staging.yml > docker-compose.staging.processed.yml
-
-    # SCP the processed docker-compose file to the staging server using sshpass
-    # Ensure STAGING_SERVER_PASSWORD CI/CD variable is set with the password "devopsservertest"
     - sshpass -p "$STAGING_SERVER_PASSWORD" scp -P ${STAGING_SERVER_SSH_PORT} -o StrictHostKeyChecking=no docker-compose.staging.processed.yml ${STAGING_SERVER_USER}@${STAGING_SERVER_IP}:${STAGING_DEPLOY_PATH}/docker-compose.yml
-    # SCP .env.staging file if you have one and want to use it (optional)
-    # - sshpass -p "$STAGING_SERVER_PASSWORD" scp -P ${STAGING_SERVER_SSH_PORT} -o StrictHostKeyChecking=no .env.staging ${STAGING_SERVER_USER}@${STAGING_SERVER_IP}:${STAGING_DEPLOY_PATH}/.env.staging
-
-    # SSH to the staging server using sshpass and execute deployment commands
     - |
       sshpass -p "$STAGING_SERVER_PASSWORD" ssh -p ${STAGING_SERVER_SSH_PORT} -o StrictHostKeyChecking=no ${STAGING_SERVER_USER}@${STAGING_SERVER_IP} "
         echo 'Connected to staging server.';
-        set -e; # Exit immediately if a command exits with a non-zero status.
+        set -e;
 
         echo 'Updating package list and installing Docker and Docker Compose if not present...';
         if ! command -v docker &> /dev/null; then
@@ -277,7 +263,7 @@ dynamic_analysis_zap:
   stage: dast_scan
   image: owasp/zap2docker-stable
   variables:
-    ZAP_TARGET_URL: ${STAGING_APP_URL} # Uses the global STAGING_APP_URL
+    ZAP_TARGET_URL: ${STAGING_APP_URL}
   script:
     - echo "Starting DAST scan with OWASP ZAP on ${ZAP_TARGET_URL}"
     - mkdir -p zap_reports
