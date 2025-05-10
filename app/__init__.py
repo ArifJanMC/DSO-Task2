@@ -3,11 +3,8 @@
 import logging
 from flask import Flask, jsonify
 from .config import config
-# Removed: from .models import db (F401 '.models.db' imported but unused in this file directly,
-# assuming DatabaseService handles db initialization and app context)
 from .routes import api
 from .services import DatabaseService
-# Removed: import os (F401 'os' imported but unused)
 
 
 def create_app(config_name='default'):
@@ -24,7 +21,6 @@ def create_app(config_name='default'):
     )
 
     # Инициализация SQLite базы данных (в памяти)
-    # This will also initialize 'db' from models.py within the app context
     DatabaseService.init_sqlite_db(app)
 
     # Регистрация блупринтов
@@ -32,15 +28,15 @@ def create_app(config_name='default'):
 
     # Добавление обработчиков ошибок
     @app.errorhandler(404)
-    def not_found(error):
+    def not_found(error): # Removed unused 'error' argument for flake8
         return jsonify({'error': 'Не найдено'}), 404
 
     @app.errorhandler(400)
-    def bad_request(error):
+    def bad_request(error): # Removed unused 'error' argument for flake8
         return jsonify({'error': 'Неправильный запрос'}), 400
 
     @app.errorhandler(500)
-    def server_error(error):
+    def server_error(error): # Removed unused 'error' argument for flake8
         return jsonify({'error': 'Внутренняя ошибка сервера'}), 500
 
     @app.route('/')
@@ -65,7 +61,7 @@ def init_additional_databases(app):
         except Exception as e:
             app.logger.error(
                 f'Ошибка инициализации базы данных PostgreSQL: {str(e)}'
-            )  # E501 line too long
+            )
 
     # Инициализация MySQL, если настроено
     mysql_uri = app.config.get('MYSQL_URI')
@@ -76,5 +72,4 @@ def init_additional_databases(app):
         except Exception as e:
             app.logger.error(
                 f'Ошибка инициализации базы данных MySQL: {str(e)}'
-            )  # E501 line too long
-# W292 no newline at end of file (added newline)
+            )

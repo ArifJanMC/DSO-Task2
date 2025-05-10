@@ -3,7 +3,6 @@
 from .models import db, Author, Book, Review, memory_store
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from datetime import datetime
-# Removed: import json (F401 imported but unused)
 
 
 class DatabaseService:
@@ -36,59 +35,53 @@ class DatabaseService:
     @staticmethod
     def seed_data():
         """Заполнение начальными данными для разработки."""
-        # Проверка, существуют ли уже данные
         if Author.query.first():
             return
 
-        # Создание авторов
         authors = [
             Author(name='Роберт Мартин',
-                   bio='Специалист по программной инженерии'),  # E501
+                   bio='Специалист по программной инженерии'),
             Author(name='Эрик Маттес',
-                   bio='Школьный учитель математики и информатики'),  # E501
+                   bio='Школьный учитель математики и информатики'),
             Author(name='Лучано Рамальо',
-                   bio='Python разработчик и тренер'),  # E501
+                   bio='Python разработчик и тренер'),
             Author(name='Эрих Гамма',
                    bio='Специалист по информатике, соавтор книги "Приемы '
-                       'объектно-ориентированного проектирования"')  # E501
+                       'объектно-ориентированного проектирования"')
         ]
-
         db.session.add_all(authors)
         db.session.commit()
 
-        # Создание книг
         books = [
             Book(title='Чистый код', isbn='9780132350884', author_id=1,
                  description='Руководство по гибкой разработке программного '
-                             'обеспечения', price=3500),  # E501
-            Book(title='Python Crash Course', isbn='9781593276034', author_id=2,
+                             'обеспечения', price=3500),
+            Book(title='Python Crash Course', isbn='9781593276034',
+                 author_id=2,
                  description='Практический проектно-ориентированный курс по '
-                             'программированию', price=2900),  # E501
+                             'программированию', price=2900),
             Book(title='Fluent Python', isbn='9781491946008', author_id=3,
                  description='Ясное, лаконичное и эффективное '
-                             'программирование', price=3900),  # E501
+                             'программирование', price=3900),
             Book(title='Design Patterns', isbn='9780201633610', author_id=4,
                  description='Элементы многократно используемого '
                              'объектно-ориентированного программного '
-                             'обеспечения', price=4500)  # E501
+                             'обеспечения', price=4500)
         ]
-
         db.session.add_all(books)
         db.session.commit()
 
-        # Создание отзывов
         reviews = [
             Review(rating=5,
-                   comment='Отличная книга для изучения чистого кода',  # E501
+                   comment='Отличная книга для изучения чистого кода',
                    reviewer_name='Иван Иванов', book_id=1),
             Review(rating=4, comment='Хорошее введение в Python',
-                   reviewer_name='Мария Сидорова', book_id=2),  # E501
+                   reviewer_name='Мария Сидорова', book_id=2),
             Review(rating=5,
                    comment='Подробная книга по Python для разработчиков '
-                           'среднего уровня',  # E501
+                           'среднего уровня',
                    reviewer_name='Сергей Петров', book_id=3)
         ]
-
         db.session.add_all(reviews)
         db.session.commit()
 
@@ -137,7 +130,7 @@ class AuthorService:
             db.session.rollback()
             return {
                 'error': 'Автор уже существует или нарушено ограничение '
-                         'целостности данных'}, 409  # E501
+                         'целостности данных'}, 409
         except SQLAlchemyError as e:
             db.session.rollback()
             return {'error': str(e)}, 500
@@ -156,8 +149,9 @@ class AuthorService:
                 birth_date_str = data['birth_date']
                 author.birth_date = None
                 if birth_date_str:
-                    author.birth_date = datetime.strptime(birth_date_str,
-                                                          '%Y-%m-%d')
+                    author.birth_date = datetime.strptime(
+                        birth_date_str, '%Y-%m-%d'
+                    )
             if 'bio' in data:
                 author.bio = data['bio']
 
@@ -214,7 +208,6 @@ class BookService:
     def create_book(data):
         """Создать новую книгу."""
         try:
-            # Проверка, существует ли автор
             author = Author.query.get(data.get('author_id'))
             if not author:
                 return {'error': 'Автор не найден'}, 404
@@ -239,7 +232,7 @@ class BookService:
             db.session.rollback()
             return {
                 'error': 'Книга уже существует или нарушено ограничение '
-                         'целостности данных'}, 409  # E501
+                         'целостности данных'}, 409
         except SQLAlchemyError as e:
             db.session.rollback()
             return {'error': str(e)}, 500
@@ -260,14 +253,14 @@ class BookService:
                 pub_date_str = data['publication_date']
                 book.publication_date = None
                 if pub_date_str:
-                    book.publication_date = datetime.strptime(pub_date_str,
-                                                              '%Y-%m-%d')
+                    book.publication_date = datetime.strptime(
+                        pub_date_str, '%Y-%m-%d'
+                    )
             if 'description' in data:
                 book.description = data['description']
             if 'price' in data:
                 book.price = data['price']
             if 'author_id' in data:
-                # Проверка, существует ли автор
                 author = Author.query.get(data['author_id'])
                 if not author:
                     return {'error': 'Автор не найден'}, 404
@@ -339,12 +332,10 @@ class ReviewService:
     def create_review(data):
         """Создать новый отзыв."""
         try:
-            # Проверка, существует ли книга
             book = Book.query.get(data.get('book_id'))
             if not book:
                 return {'error': 'Книга не найдена'}, 404
 
-            # Проверка оценки
             rating = data.get('rating')
             if rating is None or not (1 <= rating <= 5):
                 return {'error': 'Оценка должна быть от 1 до 5'}, 400
@@ -433,8 +424,8 @@ class MemoryService:
             'query': query,
             'timestamp': datetime.utcnow().isoformat()
         })
-        # Сохраняем только последние 10 поисков
-        memory_store['recent_searches'] = memory_store['recent_searches'][-10:]
+        memory_store['recent_searches'] = \
+            memory_store['recent_searches'][-10:]
         return {'message': 'Поисковый запрос добавлен'}, 200
 
     @staticmethod
@@ -449,5 +440,4 @@ class MemoryService:
         return {
             'message': 'Метрики обновлены',
             'metrics': memory_store['site_metrics']
-        }, 200  # E501 line too long
-# W292 no newline at end of file (added newline)
+        }, 200
