@@ -238,61 +238,57 @@ deploy_to_staging:
     - chmod 700 ~/.ssh
     - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
-  script:
-    - echo "Current working directory: $(pwd)"
-    - echo "Listing files in current directory:"
-    - ls -la
-    - echo "Starting deployment to staging server ${STAGING_SERVER_IP} on port ${STAGING_SERVER_SSH_PORT}..."
-    - sed "s|\${DOCKER_IMAGE_TO_DEPLOY}|${DOCKER_IMAGE_NAME}|g" docker-compose.staging.yml > docker-compose.staging.processed.yml
-    - sshpass -p "$STAGING_SERVER_PASSWORD" scp -P ${STAGING_SERVER_SSH_PORT} -o StrictHostKeyChecking=no docker-compose.staging.processed.yml ${STAGING_SERVER_USER}@${STAGING_SERVER_IP}:${STAGING_DEPLOY_PATH}/docker-compose.yml
-    - |
-      sshpass -p "$STAGING_SERVER_PASSWORD" ssh -p ${STAGING_SERVER_SSH_PORT} -o StrictHostKeyChecking=no ${STAGING_SERVER_USER}@${STAGING_SERVER_IP} "
-        echo 'Connected to staging server.';
-        set -e;
+  script: |
+    echo "Current working directory: $(pwd)"
+    echo "Listing files in current directory:"
+    ls -la
+    echo "Starting deployment to staging server ${STAGING_SERVER_IP} on port ${STAGING_SERVER_SSH_PORT}..."
+    sed "s|\${DOCKER_IMAGE_TO_DEPLOY}|${DOCKER_IMAGE_NAME}|g" docker-compose.staging.yml > docker-compose.staging.processed.yml
+    sshpass -p "$STAGING_SERVER_PASSWORD" scp -P ${STAGING_SERVER_SSH_PORT} -o StrictHostKeyChecking=no docker-compose.staging.processed.yml ${STAGING_SERVER_USER}@${STAGING_SERVER_IP}:${STAGING_DEPLOY_PATH}/docker-compose.yml
+    sshpass -p "$STAGING_SERVER_PASSWORD" ssh -p ${STAGING_SERVER_SSH_PORT} -o StrictHostKeyChecking=no ${STAGING_SERVER_USER}@${STAGING_SERVER_IP} "
+      echo 'Connected to staging server.';
+      set -e;
 
-        echo 'Updating package list and installing Docker and Docker Compose if not present...';
-        if ! command -v docker &> /dev/null; then
-          sudo apt-get update -y;
-          sudo apt-get install -y docker.io;
-          sudo systemctl start docker;
-          sudo systemctl enable docker;
-          echo 'Docker installed.';
-        else
-          echo 'Docker is already installed.';
-        fi;
+      echo 'Updating package list and installing Docker and Docker Compose if not present...';
+      if ! command -v docker &> /dev/null; then
+        sudo apt-get update -y;
+        sudo apt-get install -y docker.io;
+        sudo systemctl start docker;
+        sudo systemctl enable docker;
+        echo 'Docker installed.';
+      else
+        echo 'Docker is already installed.';
+      fi;
 
-        if ! command -v docker-compose &> /dev/null; then
-          sudo apt-get install -y docker-compose;
-          echo 'Docker Compose installed.';
-        else
-          echo 'Docker Compose is already installed.';
-        fi;
+      if ! command -v docker-compose &> /dev/null; then
+        sudo apt-get install -y docker-compose;
+        echo 'Docker Compose installed.';
+      else
+        echo 'Docker Compose is already installed.';
+      fi;
 
-        echo 'Creating deployment directory ${STAGING_DEPLOY_PATH} if it does not exist...';
-        mkdir -p ${STAGING_DEPLOY_PATH};
-        cd ${STAGING_DEPLOY_PATH};
+      echo 'Creating deployment directory ${STAGING_DEPLOY_PATH} if it does not exist...';
+      mkdir -p ${STAGING_DEPLOY_PATH};
+      cd ${STAGING_DEPLOY_PATH};
 
-        echo 'Logging in to GitLab Container Registry on staging server...';
-        sudo docker login -u \"${STAGING_REGISTRY_USER}\" -p \"${STAGING_REGISTRY_PASSWORD}\" ${CI_REGISTRY};
+      echo 'Logging in to GitLab Container Registry on staging server...';
+      sudo docker login -u \"${STAGING_REGISTRY_USER}\" -p \"${STAGING_REGISTRY_PASSWORD}\" ${CI_REGISTRY};
 
-        echo 'Pulling the latest application image...';
-        sudo docker-compose -f docker-compose.yml pull app; # 'app' is the service name in docker-compose.staging.yml
+      echo 'Pulling the latest application image...';
+      sudo docker-compose -f docker-compose.yml pull app;
 
-        echo 'Stopping and removing old service container (if exists)...';
-        sudo docker-compose -f docker-compose.yml stop app || true; # Stop the service, ignore error if not running
-        sudo docker-compose -f docker-compose.yml rm -f app || true; # Remove the service container, ignore error if not existing
+      echo 'Stopping and removing old service container (if exists)...';
+      sudo docker-compose -f docker-compose.yml stop app || true;
+      sudo docker-compose -f docker-compose.yml rm -f app || true;
 
-        echo 'Starting new application container...';
-        # Use --force-recreate to ensure it uses the new image even if config appears unchanged
-        # The --build flag is not strictly necessary here if pull was successful and image is tagged correctly,
-        # but can be added if issues persist: --build
-        sudo docker-compose -f docker-compose.yml up -d --force-recreate --remove-orphans app;
+      echo 'Starting new application container...';
+      sudo docker-compose -f docker-compose.yml up -d --force-recreate --remove-orphans app;
 
-        echo 'Cleaning up unused Docker images...';
-        sudo docker image prune -af;
+      echo 'Cleaning up unused Docker images...';
+      sudo docker image prune -af;
 
-        echo 'Deployment to ${STAGING_APP_URL} completed successfully.';
-      "
+      echo 'Deployment to ${STAGING_APP_URL} completed successfully.';
+    "
   environment:
     name: staging
     url: ${STAGING_APP_URL}
