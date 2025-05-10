@@ -191,34 +191,45 @@ build_docker_image:
 scan_docker_image:
   stage: image_scan
   image:
-    name: aquasec/trivy:latest
-    entrypoint: [""] # Override entrypoint to use shell for before_script
+    name: aquasec/trivy:0.47.0 # Pinned to a version known to have /contrib/gitlab.tpl
+    entrypoint: [""] # Override entrypoint to use shell
   variables:
-    TRIVY_EXIT_CODE: "1"
-    TRIVY_SEVERITY: "HIGH,CRITICAL"
+    TRIVY_EXIT_CODE: "1" # Fail if vulnerabilities are found
+    TRIVY_SEVERITY: "HIGH,CRITICAL" # Severities to fail on
     CI: "true"
-    GIT_STRATEGY: none
-    # Provide credentials for Trivy to pull from the private GitLab registry
-    TRIVY_USERNAME: "$CI_REGISTRY_USER"
-    TRIVY_PASSWORD: "$CI_JOB_TOKEN"
-    # No DOCKER_HOST needed here as Trivy pulls directly from registry
-  # No 'services: - docker:dind' needed here
+    GIT_STRATEGY: none # No need to clone the repo for this job
+    TRIVY_USERNAME: "$CI_REGISTRY_USER" # For Trivy to auth with GitLab Registry
+    TRIVY_PASSWORD: "$CI_JOB_TOKEN"     # For Trivy to auth with GitLab Registry
+    TRIVY_NO_PROGRESS: "true"           # Suppress progress bar in logs
+    TRIVY_CACHE_DIR: ".trivycache/"     # Define cache directory for Trivy DB
+    FULL_IMAGE_NAME: "$DOCKER_IMAGE_NAME" # Use the image built in previous stage
+  cache: # Cache Trivy's vulnerability database
+    key: trivy-db
+    paths:
+      - .trivycache/
   before_script:
-    # This before_script runs in the Trivy container's default shell
     - echo "Preparing for Trivy scan..."
-    # apk add --no-cache docker-cli # Not needed if Trivy pulls directly
-    # No docker login needed here if TRIVY_USERNAME/PASSWORD are set
+    - trivy --version # Print Trivy version for debugging
+    # Download/update the vulnerability database to the cache directory
+    - time trivy image --download-db-only --cache-dir "$TRIVY_CACHE_DIR"
   script:
-    - echo "Scanning Docker image ${DOCKER_IMAGE_NAME} from registry ${CI_REGISTRY} with Trivy..."
-    # Trivy will use TRIVY_USERNAME and TRIVY_PASSWORD to authenticate with $CI_REGISTRY
-    - trivy image --exit-code $TRIVY_EXIT_CODE --severity $TRIVY_SEVERITY --format gitlab --output trivy-gitlab-report.json ${DOCKER_IMAGE_NAME}
+    - echo "Scanning Docker image ${FULL_IMAGE_NAME} from registry ${CI_REGISTRY} with Trivy..."
+    # Use the GitLab template for output. The template path @/contrib/gitlab.tpl refers to a built-in template in Trivy.
+    - time trivy image --exit-code ${TRIVY_EXIT_CODE} --severity ${TRIVY_SEVERITY} \
+        --format template --template "@/contrib/gitlab.tpl" \
+        --output "gl-container-scanning-report.json" \
+        --cache-dir "$TRIVY_CACHE_DIR" \
+        "${FULL_IMAGE_NAME}"
+    # Optional: Print a summary to the job log for quick review
+    - echo "Trivy scan summary (High and Critical):"
+    - time trivy image --exit-code 0 --severity HIGH,CRITICAL --cache-dir "$TRIVY_CACHE_DIR" "${FULL_IMAGE_NAME}"
   artifacts:
     reports:
-      container_scanning: trivy-gitlab-report.json
-    paths:
-      - trivy-gitlab-report.json
+      container_scanning: gl-container-scanning-report.json # GitLab expects this filename for UI integration
+    paths: # Also save the report with a more generic name if needed, or just the one above
+      - gl-container-scanning-report.json
     when: always
-  allow_failure: false
+  allow_failure: false # Fail the pipeline if TRIVY_EXIT_CODE is met by Trivy
   needs: ["build_docker_image"]
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_TAG'
