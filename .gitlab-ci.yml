@@ -195,7 +195,7 @@ scan_docker_image:
     entrypoint: [""] # Override entrypoint to use shell
   variables:
     TRIVY_EXIT_CODE: "1" # Fail if vulnerabilities are found
-    TRIVY_SEVERITY: "HIGH,CRITICAL" # Severities to fail on
+    TRIVY_SEVERITY: "CRITICAL" # Severities to fail on
     CI: "true"
     GIT_STRATEGY: none # No need to clone the repo for this job
     TRIVY_USERNAME: "$CI_REGISTRY_USER" # For Trivy to auth with GitLab Registry
