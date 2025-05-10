@@ -300,37 +300,23 @@ deploy_to_staging:
 dynamic_analysis_zap:
   stage: dast_scan
   image: zaproxy/zap-stable
+  variables:
+    ZAP_TARGET_URL: ${STAGING_APP_URL}
   script:
-    - echo "Starting DAST scan with OWASP ZAP on ${STAGING_APP_URL}"
-    
-    # Debug: Check environment and working directory
-    - echo "Working directory: $(pwd)"
-    - echo "CI_PROJECT_DIR: ${CI_PROJECT_DIR}"
-    - echo "Variables: ZAP_REPORT_JSON=${ZAP_REPORT_JSON}, ZAP_REPORT_HTML=${ZAP_REPORT_HTML}"
-    
-    # Create working directory
+    - echo "Starting DAST scan with OWASP ZAP on ${ZAP_TARGET_URL}"
     - mkdir -p /zap/wrk
     - chmod -R 777 /zap/wrk
-    
-    # Run ZAP with HARDCODED filenames (no variables)
-    - zap-baseline.py -t ${STAGING_APP_URL} -J /zap/wrk/gl-dast-report.json -r /zap/wrk/zap-dast-report.html -d
-    
-    # Check files after scan
-    - echo "Files in /zap/wrk:"
-    - ls -la /zap/wrk/
-    
-    # Try to find report files
-    - echo "Searching for report files:"
+    - echo "Working directory is $(pwd)"
+    - echo "Current directory contents:"
+    - ls -la
+    # Use hardcoded filenames with full paths
+    - zap-baseline.py -t ${ZAP_TARGET_URL} -J ${CI_PROJECT_DIR}/gl-dast-report.json -r ${CI_PROJECT_DIR}/zap-dast-report.html -d
+    - echo "Files in project directory after scan:"
+    - ls -la ${CI_PROJECT_DIR}
+    - echo "Files in /zap/wrk after scan:"
+    - ls -la /zap/wrk
+    # Find report files anywhere in the system
     - find / -name "gl-dast-report.json" -o -name "zap-dast-report.html" 2>/dev/null || echo "No report files found"
-    
-    # Copy files to project directory if found
-    - echo "Copying files to project directory..."
-    - cp /zap/wrk/gl-dast-report.json ${CI_PROJECT_DIR}/ || echo "Failed to copy JSON report"
-    - cp /zap/wrk/zap-dast-report.html ${CI_PROJECT_DIR}/ || echo "Failed to copy HTML report"
-    
-    # Check project directory again
-    - echo "Files in project directory:"
-    - ls -la ${CI_PROJECT_DIR}/
   artifacts:
     paths:
       - gl-dast-report.json
