@@ -305,9 +305,9 @@ dynamic_analysis_zap:
   script:
     - echo "Starting DAST scan with OWASP ZAP on ${ZAP_TARGET_URL}"
     
-    # Create temp config file with proper YAML formatting using heredoc
+    # Create config file with proper path and no quotes to allow variable expansion
     - |
-      cat > zap-config.yaml << 'EOF'
+      cat > ${CI_PROJECT_DIR}/zap-config.yaml << EOF
       ---
       env:
         contexts:
@@ -332,9 +332,11 @@ dynamic_analysis_zap:
             reportDir: ${CI_PROJECT_DIR}
       EOF
       
-    # Run ZAP in automation mode
-    - cat zap-config.yaml  # Debug: show the config file
-    - zap.sh -cmd -autorun zap-config.yaml
+    - echo "Config file location: ${CI_PROJECT_DIR}/zap-config.yaml"
+    - cat ${CI_PROJECT_DIR}/zap-config.yaml
+    
+    # Run ZAP with explicit path to config file
+    - zap.sh -cmd -autorun ${CI_PROJECT_DIR}/zap-config.yaml
     
     # Verify files were created
     - ls -la ${CI_PROJECT_DIR}
