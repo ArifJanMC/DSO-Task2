@@ -300,34 +300,43 @@ deploy_to_staging:
 dynamic_analysis_zap:
   stage: dast_scan
   image: zaproxy/zap-stable
-  variables:
-    ZAP_TARGET_URL: ${STAGING_APP_URL}
-    # Use simple filenames without paths
-    ZAP_REPORT_JSON: "gl-dast-report.json"
-    ZAP_REPORT_HTML: "zap-dast-report.html"
   script:
-    - echo "Starting DAST scan with OWASP ZAP on ${ZAP_TARGET_URL}"
-    # Make sure the default ZAP working directory exists
+    - echo "Starting DAST scan with OWASP ZAP on ${STAGING_APP_URL}"
+    
+    # Debug: Check environment and working directory
+    - echo "Working directory: $(pwd)"
+    - echo "CI_PROJECT_DIR: ${CI_PROJECT_DIR}"
+    - echo "Variables: ZAP_REPORT_JSON=${ZAP_REPORT_JSON}, ZAP_REPORT_HTML=${ZAP_REPORT_HTML}"
+    
+    # Create working directory
     - mkdir -p /zap/wrk
     - chmod -R 777 /zap/wrk
     
-    # Run the ZAP baseline scan with output to the current directory
-    - cd ${CI_PROJECT_DIR}
-    - zap-baseline.py -t ${ZAP_TARGET_URL} -J ${ZAP_REPORT_JSON} -r ${ZAP_REPORT_HTML}
+    # Run ZAP with HARDCODED filenames (no variables)
+    - zap-baseline.py -t ${STAGING_APP_URL} -J /zap/wrk/gl-dast-report.json -r /zap/wrk/zap-dast-report.html -d
     
-    # Debug: Show files in current directory after scan
-    - echo "Files in current directory:"
-    - ls -la ${CI_PROJECT_DIR}
+    # Check files after scan
+    - echo "Files in /zap/wrk:"
+    - ls -la /zap/wrk/
     
-    # Debug: Search for report files throughout the filesystem
-    - echo "Searching for report files..."
-    - find / -name "${ZAP_REPORT_JSON}" -o -name "${ZAP_REPORT_HTML}" 2>/dev/null || echo "No report files found"
+    # Try to find report files
+    - echo "Searching for report files:"
+    - find / -name "gl-dast-report.json" -o -name "zap-dast-report.html" 2>/dev/null || echo "No report files found"
+    
+    # Copy files to project directory if found
+    - echo "Copying files to project directory..."
+    - cp /zap/wrk/gl-dast-report.json ${CI_PROJECT_DIR}/ || echo "Failed to copy JSON report"
+    - cp /zap/wrk/zap-dast-report.html ${CI_PROJECT_DIR}/ || echo "Failed to copy HTML report"
+    
+    # Check project directory again
+    - echo "Files in project directory:"
+    - ls -la ${CI_PROJECT_DIR}/
   artifacts:
     paths:
-      - ${ZAP_REPORT_JSON}
-      - ${ZAP_REPORT_HTML}
+      - gl-dast-report.json
+      - zap-dast-report.html
     reports:
-      dast: ${ZAP_REPORT_JSON}
+      dast: gl-dast-report.json
     when: always
   allow_failure: true
   needs: ["deploy_to_staging"]
