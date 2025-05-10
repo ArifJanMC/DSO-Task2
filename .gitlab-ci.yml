@@ -300,47 +300,33 @@ deploy_to_staging:
 dynamic_analysis_zap:
   stage: dast_scan
   image: zaproxy/zap-stable
-  variables:
-    ZAP_TARGET_URL: ${STAGING_APP_URL}
   script:
-    - echo "Starting DAST scan with OWASP ZAP on ${ZAP_TARGET_URL}"
-    
-    # Create config file with proper path and no quotes to allow variable expansion
-    - |
-      cat > ${CI_PROJECT_DIR}/zap-config.yaml << EOF
-      ---
-      env:
-        contexts:
-          - name: baseline
-            urls: 
-              - ${ZAP_TARGET_URL}
-      jobs:
-        - type: spider
-          parameters:
-            url: ${ZAP_TARGET_URL}
-            maxDuration: 1
-        - type: passiveScan-wait
-        - type: report
-          parameters:
-            template: traditional-json
-            reportFile: gl-dast-report.json
-            reportDir: ${CI_PROJECT_DIR}
-        - type: report
-          parameters:
-            template: traditional-html
-            reportFile: zap-dast-report.html
-            reportDir: ${CI_PROJECT_DIR}
-      EOF
-      
-    - echo "Config file location: ${CI_PROJECT_DIR}/zap-config.yaml"
-    - cat ${CI_PROJECT_DIR}/zap-config.yaml
-    
-    # Run ZAP with explicit path to config file
-    - zap.sh -cmd -autorun ${CI_PROJECT_DIR}/zap-config.yaml
-    
-    # Verify files were created
+    - echo "Starting DAST scan with OWASP ZAP on ${STAGING_APP_URL}"
+    - echo "---" > zap-config.yaml
+    - echo "env:" >> zap-config.yaml
+    - echo "  contexts:" >> zap-config.yaml
+    - echo "    - name: baseline" >> zap-config.yaml
+    - echo "      urls:" >> zap-config.yaml
+    - echo "        - ${STAGING_APP_URL}" >> zap-config.yaml
+    - echo "jobs:" >> zap-config.yaml
+    - echo "  - type: spider" >> zap-config.yaml
+    - echo "    parameters:" >> zap-config.yaml
+    - echo "      url: ${STAGING_APP_URL}" >> zap-config.yaml
+    - echo "      maxDuration: 1" >> zap-config.yaml
+    - echo "  - type: passiveScan-wait" >> zap-config.yaml
+    - echo "  - type: report" >> zap-config.yaml
+    - echo "    parameters:" >> zap-config.yaml
+    - echo "      template: traditional-json" >> zap-config.yaml
+    - echo "      reportFile: gl-dast-report.json" >> zap-config.yaml
+    - echo "      reportDir: ${CI_PROJECT_DIR}" >> zap-config.yaml
+    - echo "  - type: report" >> zap-config.yaml
+    - echo "    parameters:" >> zap-config.yaml
+    - echo "      template: traditional-html" >> zap-config.yaml
+    - echo "      reportFile: zap-dast-report.html" >> zap-config.yaml
+    - echo "      reportDir: ${CI_PROJECT_DIR}" >> zap-config.yaml
+    - cat zap-config.yaml
+    - zap.sh -cmd -autorun zap-config.yaml
     - ls -la ${CI_PROJECT_DIR}
-    
   artifacts:
     paths:
       - gl-dast-report.json
