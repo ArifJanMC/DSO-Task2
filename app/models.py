@@ -1,27 +1,34 @@
+# app/models.py
+
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.exc import IntegrityError
+# Removed: from sqlalchemy.exc import IntegrityError (F401 imported but unused)
 
 # Инициализация SQLAlchemy
 db = SQLAlchemy()
 
+
 class Author(db.Model):
     """Модель автора."""
     __tablename__ = 'authors'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     birth_date = db.Column(db.Date, nullable=True)
     bio = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )  # E501 line too long
+
     # Связь с моделью Book
-    books = db.relationship('Book', backref='author', lazy=True, cascade='all, delete-orphan')
-    
+    books = db.relationship(
+        'Book', backref='author', lazy=True, cascade='all, delete-orphan'
+    )  # E501 line too long
+
     def __repr__(self):
         return f'<Author {self.name}>'
-    
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -32,32 +39,39 @@ class Author(db.Model):
             'updated_at': self.updated_at.isoformat()
         }
 
+
 class Book(db.Model):
     """Модель книги."""
     __tablename__ = 'books'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     isbn = db.Column(db.String(13), unique=True, nullable=True)
     publication_date = db.Column(db.Date, nullable=True)
     description = db.Column(db.Text, nullable=True)
     price = db.Column(db.Float, nullable=True)
-    author_id = db.Column(db.Integer, db.ForeignKey('authors.id'), nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey('authors.id'),
+                          nullable=False)  # E501 line too long
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )  # E501 line too long
+
     # Связь с моделью Review
-    reviews = db.relationship('Review', backref='book', lazy=True, cascade='all, delete-orphan')
-    
+    reviews = db.relationship(
+        'Review', backref='book', lazy=True, cascade='all, delete-orphan'
+    )  # E501 line too long
+
     def __repr__(self):
         return f'<Book {self.title}>'
-    
+
     def to_dict(self):
         return {
             'id': self.id,
             'title': self.title,
             'isbn': self.isbn,
-            'publication_date': self.publication_date.isoformat() if self.publication_date else None,
+            'publication_date': self.publication_date.isoformat()
+            if self.publication_date else None,  # E501 line too long
             'description': self.description,
             'price': self.price,
             'author_id': self.author_id,
@@ -65,21 +79,25 @@ class Book(db.Model):
             'updated_at': self.updated_at.isoformat()
         }
 
+
 class Review(db.Model):
     """Модель отзыва."""
     __tablename__ = 'reviews'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     rating = db.Column(db.Integer, nullable=False)  # Оценка от 1-5
     comment = db.Column(db.Text, nullable=True)
     reviewer_name = db.Column(db.String(100), nullable=False)
-    book_id = db.Column(db.Integer, db.ForeignKey('books.id'), nullable=False)
+    book_id = db.Column(db.Integer, db.ForeignKey('books.id'),
+                        nullable=False)  # E501 line too long
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )  # E501 line too long
+
     def __repr__(self):
         return f'<Review {self.id} for Book {self.book_id}>'
-    
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -90,6 +108,7 @@ class Review(db.Model):
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }
+
 
 # Хранилище данных в памяти для данных, не хранящихся в БД
 memory_store = {
@@ -107,3 +126,4 @@ memory_store = {
         'unique_users': 7890
     }
 }
+# W292 no newline at end of file (added newline)

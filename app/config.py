@@ -1,8 +1,11 @@
+# app/config.py
+
 import os
 from dotenv import load_dotenv
 
 # Загрузка переменных окружения из .env файла
 load_dotenv()
+
 
 class Config:
     """Базовая конфигурация."""
@@ -11,22 +14,30 @@ class Config:
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     # PostgreSQL база данных
-    POSTGRES_URI = os.environ.get('POSTGRES_URI', 'postgresql://user:pass@localhost/books_db')
+    POSTGRES_URI = os.environ.get(
+        'POSTGRES_URI', 'postgresql://user:pass@localhost/books_db'
+    )  # E501 line too long
     # MySQL база данных
-    MYSQL_URI = os.environ.get('MYSQL_URI', 'mysql+pymysql://user:pass@localhost/books_db')
-    
+    MYSQL_URI = os.environ.get(
+        'MYSQL_URI', 'mysql+pymysql://user:pass@localhost/books_db'
+    )  # E501 line too long
+
+
 class DevelopmentConfig(Config):
     """Конфигурация для разработки."""
     DEBUG = True
+
 
 class TestingConfig(Config):
     """Конфигурация для тестирования."""
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
 
+
 class ProductionConfig(Config):
     """Конфигурация для продакшена."""
     DEBUG = False
+
 
 # Словарь для выбора конфигурации
 config = {
@@ -35,3 +46,4 @@ config = {
     'production': ProductionConfig,
     'default': DevelopmentConfig
 }
+# W292 no newline at end of file (added newline)

@@ -1,11 +1,14 @@
+# app/services.py
+
 from .models import db, Author, Book, Review, memory_store
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from datetime import datetime
-import json
+# Removed: import json (F401 imported but unused)
+
 
 class DatabaseService:
     """Сервисный класс для операций с базами данных."""
-    
+
     @staticmethod
     def init_sqlite_db(app):
         """Инициализация SQLite базы данных."""
@@ -13,7 +16,7 @@ class DatabaseService:
         with app.app_context():
             db.create_all()
             DatabaseService.seed_data()
-        
+
     @staticmethod
     def init_postgres_db(app, uri):
         """Инициализация PostgreSQL базы данных."""
@@ -21,7 +24,7 @@ class DatabaseService:
         db.init_app(app)
         with app.app_context():
             db.create_all()
-    
+
     @staticmethod
     def init_mysql_db(app, uri):
         """Инициализация MySQL базы данных."""
@@ -29,56 +32,70 @@ class DatabaseService:
         db.init_app(app)
         with app.app_context():
             db.create_all()
-    
+
     @staticmethod
     def seed_data():
         """Заполнение начальными данными для разработки."""
         # Проверка, существуют ли уже данные
         if Author.query.first():
             return
-        
+
         # Создание авторов
         authors = [
-            Author(name='Роберт Мартин', bio='Специалист по программной инженерии'),
-            Author(name='Эрик Маттес', bio='Школьный учитель математики и информатики'),
-            Author(name='Лучано Рамальо', bio='Python разработчик и тренер'),
-            Author(name='Эрих Гамма', bio='Специалист по информатике, соавтор книги "Приемы объектно-ориентированного проектирования"')
+            Author(name='Роберт Мартин',
+                   bio='Специалист по программной инженерии'),  # E501
+            Author(name='Эрик Маттес',
+                   bio='Школьный учитель математики и информатики'),  # E501
+            Author(name='Лучано Рамальо',
+                   bio='Python разработчик и тренер'),  # E501
+            Author(name='Эрих Гамма',
+                   bio='Специалист по информатике, соавтор книги "Приемы '
+                       'объектно-ориентированного проектирования"')  # E501
         ]
-        
+
         db.session.add_all(authors)
         db.session.commit()
-        
+
         # Создание книг
         books = [
-            Book(title='Чистый код', isbn='9780132350884', author_id=1, 
-                 description='Руководство по гибкой разработке программного обеспечения', price=3500),
-            Book(title='Python Crash Course', isbn='9781593276034', author_id=2, 
-                 description='Практический проектно-ориентированный курс по программированию', price=2900),
-            Book(title='Fluent Python', isbn='9781491946008', author_id=3, 
-                 description='Ясное, лаконичное и эффективное программирование', price=3900),
-            Book(title='Design Patterns', isbn='9780201633610', author_id=4, 
-                 description='Элементы многократно используемого объектно-ориентированного программного обеспечения', price=4500)
+            Book(title='Чистый код', isbn='9780132350884', author_id=1,
+                 description='Руководство по гибкой разработке программного '
+                             'обеспечения', price=3500),  # E501
+            Book(title='Python Crash Course', isbn='9781593276034', author_id=2,
+                 description='Практический проектно-ориентированный курс по '
+                             'программированию', price=2900),  # E501
+            Book(title='Fluent Python', isbn='9781491946008', author_id=3,
+                 description='Ясное, лаконичное и эффективное '
+                             'программирование', price=3900),  # E501
+            Book(title='Design Patterns', isbn='9780201633610', author_id=4,
+                 description='Элементы многократно используемого '
+                             'объектно-ориентированного программного '
+                             'обеспечения', price=4500)  # E501
         ]
-        
+
         db.session.add_all(books)
         db.session.commit()
-        
+
         # Создание отзывов
         reviews = [
-            Review(rating=5, comment='Отличная книга для изучения чистого кода', 
+            Review(rating=5,
+                   comment='Отличная книга для изучения чистого кода',  # E501
                    reviewer_name='Иван Иванов', book_id=1),
-            Review(rating=4, comment='Хорошее введение в Python', 
-                   reviewer_name='Мария Сидорова', book_id=2),
-            Review(rating=5, comment='Подробная книга по Python для разработчиков среднего уровня', 
+            Review(rating=4, comment='Хорошее введение в Python',
+                   reviewer_name='Мария Сидорова', book_id=2),  # E501
+            Review(rating=5,
+                   comment='Подробная книга по Python для разработчиков '
+                           'среднего уровня',  # E501
                    reviewer_name='Сергей Петров', book_id=3)
         ]
-        
+
         db.session.add_all(reviews)
         db.session.commit()
 
+
 class AuthorService:
     """Сервисный класс для операций с авторами."""
-    
+
     @staticmethod
     def get_all_authors():
         """Получить всех авторов."""
@@ -87,7 +104,7 @@ class AuthorService:
             return [author.to_dict() for author in authors], 200
         except SQLAlchemyError as e:
             return {'error': str(e)}, 500
-    
+
     @staticmethod
     def get_author(author_id):
         """Получить автора по ID."""
@@ -98,14 +115,19 @@ class AuthorService:
             return author.to_dict(), 200
         except SQLAlchemyError as e:
             return {'error': str(e)}, 500
-    
+
     @staticmethod
     def create_author(data):
         """Создать нового автора."""
         try:
+            birth_date_str = data.get('birth_date')
+            birth_date = None
+            if birth_date_str:
+                birth_date = datetime.strptime(birth_date_str, '%Y-%m-%d')
+
             author = Author(
                 name=data.get('name'),
-                birth_date=datetime.strptime(data.get('birth_date'), '%Y-%m-%d') if data.get('birth_date') else None,
+                birth_date=birth_date,
                 bio=data.get('bio')
             )
             db.session.add(author)
@@ -113,11 +135,13 @@ class AuthorService:
             return author.to_dict(), 201
         except IntegrityError:
             db.session.rollback()
-            return {'error': 'Автор уже существует или нарушено ограничение целостности данных'}, 409
+            return {
+                'error': 'Автор уже существует или нарушено ограничение '
+                         'целостности данных'}, 409  # E501
         except SQLAlchemyError as e:
             db.session.rollback()
             return {'error': str(e)}, 500
-    
+
     @staticmethod
     def update_author(author_id, data):
         """Обновить существующего автора."""
@@ -125,23 +149,28 @@ class AuthorService:
             author = Author.query.get(author_id)
             if not author:
                 return {'error': 'Автор не найден'}, 404
-            
+
             if 'name' in data:
                 author.name = data['name']
             if 'birth_date' in data:
-                author.birth_date = datetime.strptime(data['birth_date'], '%Y-%m-%d') if data['birth_date'] else None
+                birth_date_str = data['birth_date']
+                author.birth_date = None
+                if birth_date_str:
+                    author.birth_date = datetime.strptime(birth_date_str,
+                                                          '%Y-%m-%d')
             if 'bio' in data:
                 author.bio = data['bio']
-            
+
             db.session.commit()
             return author.to_dict(), 200
         except IntegrityError:
             db.session.rollback()
-            return {'error': 'Нарушено ограничение целостности данных'}, 409
+            return {
+                'error': 'Нарушено ограничение целостности данных'}, 409
         except SQLAlchemyError as e:
             db.session.rollback()
             return {'error': str(e)}, 500
-    
+
     @staticmethod
     def delete_author(author_id):
         """Удалить автора."""
@@ -149,7 +178,7 @@ class AuthorService:
             author = Author.query.get(author_id)
             if not author:
                 return {'error': 'Автор не найден'}, 404
-            
+
             db.session.delete(author)
             db.session.commit()
             return {'message': f'Автор {author_id} успешно удален'}, 200
@@ -157,9 +186,10 @@ class AuthorService:
             db.session.rollback()
             return {'error': str(e)}, 500
 
+
 class BookService:
     """Сервисный класс для операций с книгами."""
-    
+
     @staticmethod
     def get_all_books():
         """Получить все книги."""
@@ -168,7 +198,7 @@ class BookService:
             return [book.to_dict() for book in books], 200
         except SQLAlchemyError as e:
             return {'error': str(e)}, 500
-    
+
     @staticmethod
     def get_book(book_id):
         """Получить книгу по ID."""
@@ -179,7 +209,7 @@ class BookService:
             return book.to_dict(), 200
         except SQLAlchemyError as e:
             return {'error': str(e)}, 500
-    
+
     @staticmethod
     def create_book(data):
         """Создать новую книгу."""
@@ -188,11 +218,16 @@ class BookService:
             author = Author.query.get(data.get('author_id'))
             if not author:
                 return {'error': 'Автор не найден'}, 404
-            
+
+            pub_date_str = data.get('publication_date')
+            publication_date = None
+            if pub_date_str:
+                publication_date = datetime.strptime(pub_date_str, '%Y-%m-%d')
+
             book = Book(
                 title=data.get('title'),
                 isbn=data.get('isbn'),
-                publication_date=datetime.strptime(data.get('publication_date'), '%Y-%m-%d') if data.get('publication_date') else None,
+                publication_date=publication_date,
                 description=data.get('description'),
                 price=data.get('price'),
                 author_id=data.get('author_id')
@@ -202,11 +237,13 @@ class BookService:
             return book.to_dict(), 201
         except IntegrityError:
             db.session.rollback()
-            return {'error': 'Книга уже существует или нарушено ограничение целостности данных'}, 409
+            return {
+                'error': 'Книга уже существует или нарушено ограничение '
+                         'целостности данных'}, 409  # E501
         except SQLAlchemyError as e:
             db.session.rollback()
             return {'error': str(e)}, 500
-    
+
     @staticmethod
     def update_book(book_id, data):
         """Обновить существующую книгу."""
@@ -214,13 +251,17 @@ class BookService:
             book = Book.query.get(book_id)
             if not book:
                 return {'error': 'Книга не найдена'}, 404
-            
+
             if 'title' in data:
                 book.title = data['title']
             if 'isbn' in data:
                 book.isbn = data['isbn']
             if 'publication_date' in data:
-                book.publication_date = datetime.strptime(data['publication_date'], '%Y-%m-%d') if data['publication_date'] else None
+                pub_date_str = data['publication_date']
+                book.publication_date = None
+                if pub_date_str:
+                    book.publication_date = datetime.strptime(pub_date_str,
+                                                              '%Y-%m-%d')
             if 'description' in data:
                 book.description = data['description']
             if 'price' in data:
@@ -231,16 +272,17 @@ class BookService:
                 if not author:
                     return {'error': 'Автор не найден'}, 404
                 book.author_id = data['author_id']
-            
+
             db.session.commit()
             return book.to_dict(), 200
         except IntegrityError:
             db.session.rollback()
-            return {'error': 'Нарушено ограничение целостности данных'}, 409
+            return {
+                'error': 'Нарушено ограничение целостности данных'}, 409
         except SQLAlchemyError as e:
             db.session.rollback()
             return {'error': str(e)}, 500
-    
+
     @staticmethod
     def delete_book(book_id):
         """Удалить книгу."""
@@ -248,7 +290,7 @@ class BookService:
             book = Book.query.get(book_id)
             if not book:
                 return {'error': 'Книга не найдена'}, 404
-            
+
             db.session.delete(book)
             db.session.commit()
             return {'message': f'Книга {book_id} успешно удалена'}, 200
@@ -256,9 +298,10 @@ class BookService:
             db.session.rollback()
             return {'error': str(e)}, 500
 
+
 class ReviewService:
     """Сервисный класс для операций с отзывами."""
-    
+
     @staticmethod
     def get_all_reviews():
         """Получить все отзывы."""
@@ -267,7 +310,7 @@ class ReviewService:
             return [review.to_dict() for review in reviews], 200
         except SQLAlchemyError as e:
             return {'error': str(e)}, 500
-    
+
     @staticmethod
     def get_reviews_for_book(book_id):
         """Получить все отзывы для конкретной книги."""
@@ -275,12 +318,12 @@ class ReviewService:
             book = Book.query.get(book_id)
             if not book:
                 return {'error': 'Книга не найдена'}, 404
-            
+
             reviews = Review.query.filter_by(book_id=book_id).all()
             return [review.to_dict() for review in reviews], 200
         except SQLAlchemyError as e:
             return {'error': str(e)}, 500
-    
+
     @staticmethod
     def get_review(review_id):
         """Получить отзыв по ID."""
@@ -291,7 +334,7 @@ class ReviewService:
             return review.to_dict(), 200
         except SQLAlchemyError as e:
             return {'error': str(e)}, 500
-    
+
     @staticmethod
     def create_review(data):
         """Создать новый отзыв."""
@@ -300,12 +343,12 @@ class ReviewService:
             book = Book.query.get(data.get('book_id'))
             if not book:
                 return {'error': 'Книга не найдена'}, 404
-            
+
             # Проверка оценки
             rating = data.get('rating')
             if rating is None or not (1 <= rating <= 5):
                 return {'error': 'Оценка должна быть от 1 до 5'}, 400
-            
+
             review = Review(
                 rating=rating,
                 comment=data.get('comment'),
@@ -317,11 +360,12 @@ class ReviewService:
             return review.to_dict(), 201
         except IntegrityError:
             db.session.rollback()
-            return {'error': 'Нарушено ограничение целостности данных'}, 409
+            return {
+                'error': 'Нарушено ограничение целостности данных'}, 409
         except SQLAlchemyError as e:
             db.session.rollback()
             return {'error': str(e)}, 500
-    
+
     @staticmethod
     def update_review(review_id, data):
         """Обновить существующий отзыв."""
@@ -329,7 +373,7 @@ class ReviewService:
             review = Review.query.get(review_id)
             if not review:
                 return {'error': 'Отзыв не найден'}, 404
-            
+
             if 'rating' in data:
                 rating = data['rating']
                 if not (1 <= rating <= 5):
@@ -339,16 +383,17 @@ class ReviewService:
                 review.comment = data['comment']
             if 'reviewer_name' in data:
                 review.reviewer_name = data['reviewer_name']
-            
+
             db.session.commit()
             return review.to_dict(), 200
         except IntegrityError:
             db.session.rollback()
-            return {'error': 'Нарушено ограничение целостности данных'}, 409
+            return {
+                'error': 'Нарушено ограничение целостности данных'}, 409
         except SQLAlchemyError as e:
             db.session.rollback()
             return {'error': str(e)}, 500
-    
+
     @staticmethod
     def delete_review(review_id):
         """Удалить отзыв."""
@@ -356,7 +401,7 @@ class ReviewService:
             review = Review.query.get(review_id)
             if not review:
                 return {'error': 'Отзыв не найден'}, 404
-            
+
             db.session.delete(review)
             db.session.commit()
             return {'message': f'Отзыв {review_id} успешно удален'}, 200
@@ -364,21 +409,23 @@ class ReviewService:
             db.session.rollback()
             return {'error': str(e)}, 500
 
+
 class MemoryService:
     """Сервисный класс для операций с данными в памяти."""
-    
+
     @staticmethod
     def get_all_memory_data():
         """Получить все данные из памяти."""
         return memory_store, 200
-    
+
     @staticmethod
     def get_memory_data(key):
         """Получить конкретные данные из памяти по ключу."""
         if key not in memory_store:
-            return {'error': f'Ключ "{key}" не найден в хранилище памяти'}, 404
+            return {
+                'error': f'Ключ "{key}" не найден в хранилище памяти'}, 404
         return {key: memory_store[key]}, 200
-    
+
     @staticmethod
     def add_search_query(query):
         """Добавить поисковый запрос в недавние поиски."""
@@ -389,7 +436,7 @@ class MemoryService:
         # Сохраняем только последние 10 поисков
         memory_store['recent_searches'] = memory_store['recent_searches'][-10:]
         return {'message': 'Поисковый запрос добавлен'}, 200
-    
+
     @staticmethod
     def update_metrics(data):
         """Обновить метрики сайта."""
@@ -399,4 +446,8 @@ class MemoryService:
             memory_store['site_metrics']['page_views'] = data['page_views']
         if 'unique_users' in data:
             memory_store['site_metrics']['unique_users'] = data['unique_users']
-        return {'message': 'Метрики обновлены', 'metrics': memory_store['site_metrics']}, 200
+        return {
+            'message': 'Метрики обновлены',
+            'metrics': memory_store['site_metrics']
+        }, 200  # E501 line too long
+# W292 no newline at end of file (added newline)
