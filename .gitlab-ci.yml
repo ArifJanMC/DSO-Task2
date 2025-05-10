@@ -296,12 +296,13 @@ deploy_to_staging:
 # --- DYNAMIC APPLICATION SECURITY TESTING (DAST) STAGE ---
 dynamic_analysis_zap:
   stage: dast_scan
-  image: owasp/zap2docker-stable
+  image: zaproxy/zap-stable # UPDATED ZAP IMAGE
   variables:
     ZAP_TARGET_URL: ${STAGING_APP_URL}
   script:
     - echo "Starting DAST scan with OWASP ZAP on ${ZAP_TARGET_URL}"
     - mkdir -p zap_reports
+    # The ZAP scripts like zap-baseline.py are typically included in the image's PATH
     - zap-baseline.py -t ${ZAP_TARGET_URL} -J zap_reports/${ZAP_REPORT_JSON} -r zap_reports/${ZAP_REPORT_HTML} || true
     - echo "DAST scan completed. Reports are in zap_reports/ directory."
   artifacts:
