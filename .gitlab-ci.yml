@@ -214,12 +214,9 @@ scan_docker_image:
     - time trivy image --download-db-only --cache-dir "$TRIVY_CACHE_DIR"
   script:
     - echo "Scanning Docker image ${FULL_IMAGE_NAME} from registry ${CI_REGISTRY} with Trivy..."
-    # Use the GitLab template for output. The template path @/contrib/gitlab.tpl refers to a built-in template in Trivy.
-    - time trivy image --exit-code ${TRIVY_EXIT_CODE} --severity ${TRIVY_SEVERITY} \
-        --format template --template "@/contrib/gitlab.tpl" \
-        --output "gl-container-scanning-report.json" \
-        --cache-dir "$TRIVY_CACHE_DIR" \
-        "${FULL_IMAGE_NAME}"
+    # Ensure the trivy image command is a single line or correctly handled by YAML for multi-line commands if needed.
+    # Forcing it to a single line here to avoid shell continuation issues.
+    - time trivy image --exit-code ${TRIVY_EXIT_CODE} --severity ${TRIVY_SEVERITY} --format template --template "@/contrib/gitlab.tpl" --output "gl-container-scanning-report.json" --cache-dir "$TRIVY_CACHE_DIR" "${FULL_IMAGE_NAME}"
     # Optional: Print a summary to the job log for quick review
     - echo "Trivy scan summary (High and Critical):"
     - time trivy image --exit-code 0 --severity HIGH,CRITICAL --cache-dir "$TRIVY_CACHE_DIR" "${FULL_IMAGE_NAME}"
