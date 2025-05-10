@@ -1,0 +1,28 @@
+# docker-compose.staging.yml
+# This file is used to deploy the application to the staging server.
+version: '3.8'
+
+services:
+  app:
+    # The image will be dynamically set by the CI script before deploying
+    image: ${DOCKER_IMAGE_TO_DEPLOY}
+    container_name: book_catalog_staging_app
+    restart: always
+    ports:
+      - "80:5000" # Map host port 80 to container's port 5000 (app's internal port)
+    environment:
+      # Define environment variables your Flask application needs for staging.
+      # These can be overridden or supplemented by GitLab CI/CD variables if needed.
+      FLASK_CONFIG: "production" # Or a specific 'staging' config if you have one in your app
+      # SECRET_KEY: "your_staging_secret_key" # It's better to set this via GitLab CI/CD variables if sensitive
+      # SQLALCHEMY_DATABASE_URI: "your_staging_database_uri" # If staging uses a separate DB
+      # Add any other environment variables required by run:app
+    # To use an .env file on the staging server (e.g., .env.staging):
+    # env_file:
+    #   - ./.env.staging
+    networks:
+      - staging_net
+
+networks:
+  staging_net:
+    driver: bridge
