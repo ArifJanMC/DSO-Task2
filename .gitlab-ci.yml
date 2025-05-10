@@ -299,36 +299,33 @@ deploy_to_staging:
 # --- DYNAMIC APPLICATION SECURITY TESTING (DAST) STAGE ---
 dynamic_analysis_zap:
   stage: dast_scan
-  image: zaproxy/zap-stable # Using the new official ZAP image
+  image: zaproxy/zap-stable
   variables:
     ZAP_TARGET_URL: ${STAGING_APP_URL}
-    ZAP_CI_DIR: "${CI_PROJECT_DIR}/zap_dast_session" # Changed directory name for clarity
-    ZAP_REPORT_JSON_FILENAME: "gl-dast-report.json" # Standard name for GitLab DAST report
+    ZAP_CI_DIR: "${CI_PROJECT_DIR}/zap_dast_session"
+    ZAP_REPORT_JSON_FILENAME: "gl-dast-report.json"
     ZAP_REPORT_HTML_FILENAME: "zap-dast-report.html"
   script:
     - echo "Starting DAST scan with OWASP ZAP on ${ZAP_TARGET_URL}"
-    - mkdir -p ${ZAP_CI_DIR} # Create directory for ZAP's internal use
-    - chmod -R 777 ${ZAP_CI_DIR} # Ensure it's writable by ZAP user
-    # The zap-baseline.py script will run in $CI_PROJECT_DIR.
-    # Reports will be generated in $CI_PROJECT_DIR.
-    - zap-baseline.py -t ${ZAP_TARGET_URL} \
-        -J "${ZAP_REPORT_JSON_FILENAME}" \
-        -r "${ZAP_REPORT_HTML_FILENAME}" \
-        -z "-dir ${ZAP_CI_DIR}"
-        # Removed '|| true' to see the actual exit code of zap-baseline.py
-        # The job has allow_failure: true, so pipeline will continue if zap-baseline.py fails.
+    - mkdir -p ${ZAP_CI_DIR}
+    - chmod -R 777 ${ZAP_CI_DIR}
+    # Fix: Remove backslashes and put command on one line
+    - zap-baseline.py -t ${ZAP_TARGET_URL} -J ${ZAP_REPORT_JSON_FILENAME} -r ${ZAP_REPORT_HTML_FILENAME} -z "-dir ${ZAP_CI_DIR}"
+    # Debug: Check if reports were generated
     - echo "DAST scan completed. Checking for reports in $(pwd):"
-    - ls -l . # List files in current directory ($CI_PROJECT_DIR)
+    - ls -la 
+    # If no reports found, search for them
+    - echo "Searching for report files..."
+    - find / -name "${ZAP_REPORT_JSON_FILENAME}" -o -name "${ZAP_REPORT_HTML_FILENAME}" 2>/dev/null || echo "No report files found"
   artifacts:
     paths:
-      - "${ZAP_REPORT_JSON_FILENAME}" # Path relative to $CI_PROJECT_DIR
-      - "${ZAP_REPORT_HTML_FILENAME}" # Path relative to $CI_PROJECT_DIR
-      - zap_dast_session/ # Artifact ZAP's working directory for debugging
-    reports: # For GitLab DAST UI integration
+      - "${ZAP_REPORT_JSON_FILENAME}"
+      - "${ZAP_REPORT_HTML_FILENAME}"
+      - zap_dast_session/
+    reports:
       dast: "${ZAP_REPORT_JSON_FILENAME}"
     when: always
-  allow_failure: true # Keep as true until DAST is stable and tuned
+  allow_failure: true
   needs: ["deploy_to_staging"]
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-
