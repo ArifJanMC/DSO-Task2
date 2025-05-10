@@ -301,32 +301,8 @@ dynamic_analysis_zap:
   stage: dast_scan
   image: zaproxy/zap-stable
   script:
-    - echo "Starting DAST scan with OWASP ZAP on ${STAGING_APP_URL}"
-    - echo "---" > zap-config.yaml
-    - echo "env:" >> zap-config.yaml
-    - echo "  contexts:" >> zap-config.yaml
-    - echo "    - name: baseline" >> zap-config.yaml
-    - echo "      urls:" >> zap-config.yaml
-    - echo "        - ${STAGING_APP_URL}" >> zap-config.yaml
-    - echo "jobs:" >> zap-config.yaml
-    - echo "  - type: spider" >> zap-config.yaml
-    - echo "    parameters:" >> zap-config.yaml
-    - echo "      url: ${STAGING_APP_URL}" >> zap-config.yaml
-    - echo "      maxDuration: 1" >> zap-config.yaml
-    - echo "  - type: passiveScan-wait" >> zap-config.yaml
-    - echo "  - type: report" >> zap-config.yaml
-    - echo "    parameters:" >> zap-config.yaml
-    - echo "      template: traditional-json" >> zap-config.yaml
-    - echo "      reportFile: gl-dast-report.json" >> zap-config.yaml
-    - echo "      reportDir: ${CI_PROJECT_DIR}" >> zap-config.yaml
-    - echo "  - type: report" >> zap-config.yaml
-    - echo "    parameters:" >> zap-config.yaml
-    - echo "      template: traditional-html" >> zap-config.yaml
-    - echo "      reportFile: zap-dast-report.html" >> zap-config.yaml
-    - echo "      reportDir: ${CI_PROJECT_DIR}" >> zap-config.yaml
-    - cat zap-config.yaml
-    - zap.sh -cmd -autorun zap-config.yaml
-    - ls -la ${CI_PROJECT_DIR}
+    - zap-full-scan.py -t ${STAGING_APP_URL} -r zap-dast-report.html -J gl-dast-report.json -d
+    - ls -la
   artifacts:
     paths:
       - gl-dast-report.json
@@ -336,5 +312,3 @@ dynamic_analysis_zap:
     when: always
   allow_failure: true
   needs: ["deploy_to_staging"]
-  rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
