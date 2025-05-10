@@ -40,7 +40,7 @@ variables:
   # Define the image name for Docker, using GitLab's predefined variables
   DOCKER_IMAGE_NAME: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
   # Staging application URL - set this in GitLab CI/CD Variables or via your deploy script
-  STAGING_APP_URL: "http://your-staging-app-url.com"
+  STAGING_APP_URL: "http://your-staging-app-url.com" # <-- IMPORTANT: Update this in GitLab CI/CD Variables
 
 # --- LINTING STAGE ---
 lint_code:
@@ -120,13 +120,9 @@ scan_dependencies:
   script:
     - echo "Scanning dependencies for vulnerabilities with Safety..."
     # Scan the requirements file. Safety exits with non-zero if vulnerabilities are found.
+    # Output JSON report first, then run again to get exit code for pipeline failure.
     - safety check -r ${REQUIREMENTS_FILE} --json --output safety-report.json || true
-    # Check if safety found any vulnerabilities (exit code 1 from safety means vulnerabilities found)
-    # We use `|| true` above to prevent immediate exit, then check the report.
-    # A more robust way is to parse the JSON or use safety's exit codes directly if preferred.
-    # For simplicity, we'll rely on safety's default exit code behavior for allow_failure.
-    # If you want to fail explicitly based on severity, you might need a custom script.
-    - safety check -r ${REQUIREMENTS_FILE}
+    - safety check -r ${REQUIREMENTS_FILE} # This command will cause failure if vulns are found
   artifacts:
     paths:
       - safety-report.json
@@ -147,6 +143,7 @@ static_analysis_bandit:
     # Run bandit on the application code path, outputting a JSON report.
     # -ll for medium severity, -ii for medium confidence. Adjust as needed.
     # Bandit exits with 1 if issues are found, 0 otherwise.
+    # The `|| if [...]` construct ensures the pipeline fails correctly on bandit issues.
     - bandit -r ${APP_CODE_PATH} -f json -o bandit-report.json -ll -ii || if [ $? -eq 1 ]; then echo 'Bandit found issues!'; exit 1; else echo 'Bandit scan clear.'; exit 0; fi
   artifacts:
     paths:
@@ -229,12 +226,27 @@ deploy_to_staging:
   stage: deploy_staging
   image: alpine # A small image for scripting
   script:
+    # Each line here must be a valid shell command (a string).
     - echo "Deploying application to staging environment: ${STAGING_APP_URL}"
-    # Add your actual deployment scripts here.
-    # This could involve kubectl, docker-compose up on a remote server, etc.
-    # For example, if you use docker-compose.yml from DevSecOps/Task3/
-    # You might scp it and then run 'docker-compose up -d'
-    - echo "Deployment to ${STAGING_APP_URL} simulated."
+    #
+    # === Add your actual deployment commands below ===
+    # Example: If using docker-compose from DevSecOps/Task3/ on a remote server:
+    # - apk add --no-cache openssh-client rsync # Install necessary tools
+    # - eval $(ssh-agent -s)
+    # - echo "$SSH_PRIVATE_KEY" | ssh-add -
+    # - mkdir -p ~/.ssh
+    # - chmod 700 ~/.ssh
+    # - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+    # - chmod 644 ~/.ssh/known_hosts
+    # - scp -r DevSecOps/Task3/docker-compose.yml your_user@your_staging_server_ip:/path/to/deploy/
+    # - scp -r DevSecOps/Task3/nginx/ your_user@your_staging_server_ip:/path/to/deploy/
+    # - scp -r DevSecOps/Task3/certs/ your_user@your_staging_server_ip:/path/to/deploy/
+    # - # Potentially scp .env file if it's managed and contains staging config
+    # - ssh your_user@your_staging_server_ip "cd /path/to/deploy && docker-compose -f docker-compose.yml pull && docker-compose -f docker-compose.yml up -d --remove-orphans"
+    #
+    # === End of your actual deployment commands ===
+    #
+    - echo "Deployment to ${STAGING_APP_URL} (simulated/actual commands above) completed."
   environment:
     name: staging
     url: ${STAGING_APP_URL} # Makes the URL accessible in GitLab UI
@@ -256,23 +268,10 @@ dynamic_analysis_zap:
     DAST_WEBSITE: ${STAGING_APP_URL} # URL of the deployed application
     DAST_BROWSER_SCAN: "false" # Set to true to enable AJAX spidering, can be slower
     DAST_FULL_SCAN_ENABLED: "true" # Perform a more thorough scan
-  # If not using the template, you'd use an image like owasp/zap2docker-stable:
-  # image: owasp/zap2docker-stable
-  # script:
-  #   - echo "Running DAST scan with OWASP ZAP on ${STAGING_APP_URL}..."
-  #   - zap-baseline.py -t ${STAGING_APP_URL} -g gen-conf -J zap-report.json || echo "ZAP baseline scan completed."
-  #   # For a full scan:
-  #   # - zap-full-scan.py -t ${STAGING_APP_URL} -J zap-report.json || echo "ZAP full scan completed."
-  # artifacts:
-  #   paths:
-  #     - zap-report.json
-  #     - zap-report.html # If ZAP is configured to output HTML
-  #   reports:
-  #     dast: zap-report.json # For GitLab DAST report integration
-  #   when: always
-  allow_failure: true # DAST findings can be numerous; initially, you might not want to block the pipeline.
+  # allow_failure: true # DAST findings can be numerous; initially, you might not want to block the pipeline.
                       # Review findings and then set to false or use DAST_FAIL_ON_SEVERITY.
   needs: ["deploy_to_staging"] # This job depends on the successful deployment to staging
   rules:
     # Only run this job on the default branch after deployment
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
