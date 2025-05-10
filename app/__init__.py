@@ -28,15 +28,15 @@ def create_app(config_name='default'):
 
     # Добавление обработчиков ошибок
     @app.errorhandler(404)
-    def not_found(error): # Removed unused 'error' argument for flake8
+    def not_found(error):  # Removed unused 'error' argument for flake8
         return jsonify({'error': 'Не найдено'}), 404
 
     @app.errorhandler(400)
-    def bad_request(error): # Removed unused 'error' argument for flake8
+    def bad_request(error):  # Removed unused 'error' argument for flake8
         return jsonify({'error': 'Неправильный запрос'}), 400
 
     @app.errorhandler(500)
-    def server_error(error): # Removed unused 'error' argument for flake8
+    def server_error(error):  # Removed unused 'error' argument for flake8
         return jsonify({'error': 'Внутренняя ошибка сервера'}), 500
 
     @app.route('/')

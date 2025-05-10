@@ -9,7 +9,7 @@ from flask import request, jsonify
 
 
 def sanitize_input(input_string):
-    """Санитизация пользовательского ввода для предотвращения XSS и инъекционных атак."""
+    """Санитизация пользовательского ввода для предотвращения атак."""
     # E501 line too long (89 > 79 characters) - wrapped docstring
     if not input_string:
         return input_string
@@ -85,7 +85,7 @@ def log_request(logger):
             logger.info(
                 f"Запрос: {request.method} {request.path} - "
                 f"IP: {request.remote_addr}"
-            ) # E501 line too long (95 > 79 characters) - wrapped
+            )  # E501 line too long (95 > 79 characters) - wrapped
             return f(*args, **kwargs)
 
         wrapper.__name__ = f.__name__
