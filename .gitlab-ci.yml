@@ -100,16 +100,24 @@ scan_dependencies:
     - python -m venv venv
     - source venv/bin/activate
     - pip config set global.cache-dir "$(pwd)/.cache/pip"
-    - pip install safety
+    - pip install safety # Installs the latest version of safety
   script:
     - echo "Scanning dependencies for vulnerabilities with Safety..."
-    - safety check -r ${REQUIREMENTS_FILE} --json --output safety-report.json || true
+    # Corrected: Use shell redirection '>' to output JSON to a file.
+    # The '|| true' ensures this step doesn't fail the job if vulnerabilities are found,
+    # allowing the report to be generated. The next command will actually cause the failure.
+    - safety check -r ${REQUIREMENTS_FILE} --output json > safety-report.json || true
+    # This command will run the check again and exit with a non-zero code if vulnerabilities are found,
+    # thus failing the job as per allow_failure: false.
+    # Safety also prints a deprecation warning for 'check', suggesting 'scan'.
+    # For now, 'check' still works. If you update safety to a much later version,
+    # you might need to switch to 'safety scan --output json > report.json' or similar.
     - safety check -r ${REQUIREMENTS_FILE}
   artifacts:
     paths:
-      - safety-report.json
+      - safety-report.json # This should now be created correctly
     when: always
-  allow_failure: false
+  allow_failure: false # Fail pipeline if vulnerabilities are found by the second safety command
 
 # --- STATIC APPLICATION SECURITY TESTING (SAST) STAGE ---
 static_analysis_bandit:

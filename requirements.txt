@@ -1,10 +1,46 @@
-Flask==2.0.1
-Flask-SQLAlchemy==2.5.1
-Flask-Migrate==3.1.0
-marshmallow==3.13.0
-psycopg2-binary==2.9.1
-pymysql==1.0.2
-SQLAlchemy==1.4.23
-pytest==6.2.5
-python-dotenv==0.19.0
-Werkzeug==2.0.1
+# Flask and related extensions
+Flask~=2.3.3 # Updated from 2.0.1
+Werkzeug~=3.0.3 # Updated from 2.0.1 (addresses CVEs)
+Flask-SQLAlchemy~=3.1.1 # Updated for SQLAlchemy 2.x compatibility
+Flask-Migrate~=4.0.7 # Updated for compatibility
+SQLAlchemy~=2.0.29 # Updated from 1.4.23 (addresses CVEs)
+
+# Database drivers
+psycopg2-binary~=2.9.9 # Or latest 2.9.x
+PyMySQL~=1.1.1 # Updated from 1.0.2 (addresses CVE)
+
+# Serialization and utility
+marshmallow~=3.21.1 # Updated from 3.13.0
+python-dotenv~=0.21.0 # Or latest 0.x or 1.x
+
+# Testing
+pytest~=7.4.4 # Or latest 7.x or 8.x
+# pytest==6.2.5 # Original, can keep if no issues
+
+# WSGI Server (used in Dockerfile)
+gunicorn~=21.2.0 # Updated from 20.1.0 or add if missing
+
+# Other dependencies from your original file if they were there
+# (e.g., if you had others beyond the common Flask stack)
+
+# Dependencies installed by safety in the log, ensure they are compatible or remove if not directly needed
+# authlib>=1.2.0 # Safety installed Authlib-1.3.2
+# packaging>=21.0 # Safety installed packaging-25.0 (likely a sub-dependency)
+# psutil~=6.1.0 # Safety installed psutil-6.1.1
+# jinja2>=3.1.0 # Safety installed Jinja2-3.1.6
+# tenacity # Safety installed tenacity-9.0.0
+# ruamel-yaml>=0.17.21 # Safety installed ruamel.yaml-0.18.10
+# click>=8.0.2 # Safety installed click-8.1.8
+# setuptools>=65.5.1 # Safety installed setuptools-75.3.2
+# filelock~=3.16.1 # Safety installed filelock-3.16.1
+# tomli # Safety installed tomli-2.2.1
+# requests # Safety installed requests-2.32.3
+# httpx # Safety installed httpx-0.28.1
+# nltk>=3.9 # Safety installed nltk-3.9.1
+# tomlkit # Safety installed tomlkit-0.13.2
+# dparse>=0.6.4 # Safety installed dparse-0.6.4
+# typer>=0.12.1 # Safety installed typer-0.15.3
+# typing-extensions>=4.7.1 # Safety installed typing-extensions-4.13.2
+# safety-schemas==0.0.14 # Safety installed safety-schemas-0.0.14
+# pydantic<2.10.0,>=2.6.0 # Safety installed pydantic-2.9.2
+# cryptography # Safety installed cryptography-44.0.3
