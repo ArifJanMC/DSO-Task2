@@ -1,0 +1,24 @@
+title = "Gitleaks config for book-catalogue"
+
+# Пример добавления кастомного правила
+# [[rules]]
+# id = "my-app-token"
+# description = "Detects custom tokens for My App"
+# regex = '''app_token_[A-Za-z0-9]{20}'''
+# tags = ["my-app", "token"]
+
+# Исключения (используйте с осторожностью!)
+[allowlist]
+description = "Allow specific false positives or test data"
+# Игнорировать определенные коммиты
+# commits = [
+# "abcdef1234567890abcdef1234567890abcdef12", # Пример SHA коммита
+# ]
+# Игнорировать файлы по пути (регулярное выражение)
+# files = [
+# '''^test/fixtures/.*''', # Игнорировать все в test/fixtures
+# ]
+# Игнорировать строки, соответствующие регулярному выражению (глобально)
+# regexes = [
+# '''(A3T[A-Z0-9]|AKIA|AGPA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}''', # AWS Key ID - если у вас есть примеры
+# ]

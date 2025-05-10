@@ -1,0 +1,31 @@
+# Определение стадий конвейера (pipeline)
+stages:
+  - security_scan # Стадия для проверок безопасности
+
+# Задача для обнаружения секретов
+detect_secrets:
+  stage: security_scan # Привязка задачи к стадии security_scan
+  image:
+    name: zricethezav/gitleaks:latest # Используем официальный Docker-образ Gitleaks
+    entrypoint: [""] # Переопределяем entrypoint, чтобы можно было выполнять свои команды скрипта
+  script:
+    - echo "Сканирование репозитория на наличие секретов с помощью Gitleaks..."
+    # $CI_PROJECT_DIR - это переменная GitLab CI, указывающая на корень вашего проекта, где клонируется репозиторий
+    # --verbose - для более детального вывода
+    # --report-format json и --report-path для генерации отчета в формате, который GitLab может использовать
+    # для интеграции с функциями безопасности (Security Dashboard).
+    # Gitleaks завершится с ненулевым кодом (и провалит задачу), если найдет секреты.
+    - gitleaks detect --source="$CI_PROJECT_DIR" --verbose --report-format="json" --report-path="gl-secret-detection-report.json"
+  artifacts:
+    # Ключевое слово 'reports' используется для интеграции с функциями безопасности GitLab
+    # (например, Security Dashboard, виджет в Merge Request).
+    # Эта интеграция обычно доступна на платных тарифах GitLab (Premium/Ultimate).
+    reports:
+      secret_detection: gl-secret-detection-report.json # Путь к файлу отчета для Secret Detection
+    # 'paths' сохраняет артефакты для скачивания или просмотра после выполнения задачи, доступно на всех тарифах.
+    paths:
+      - gl-secret-detection-report.json
+    when: always # Собирать артефакты всегда, даже если задача завершилась неудачно (например, найдены секреты)
+  allow_failure: false # Если true, то пайплайн будет считаться успешным, даже если эта задача провалится.
+                       # Установите true, если хотите только получать отчет, но не блокировать пайплайн.
+                       # Для принудительного исправления лучше оставить false.
