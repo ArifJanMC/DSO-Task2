@@ -1,48 +1,40 @@
-# Используем официальный образ Python 3.8 slim в качестве базового
-FROM python:3.8-slim
+# Use an official Python runtime as a parent image
+# Using python:3.8-slim-bullseye as Bullseye is newer than Buster and might have updated packages
+FROM python:3.8-slim-bullseye
 
-# Устанавливаем переменные окружения
-# PYTHONUNBUFFERED гарантирует, что вывод Python отправляется прямо в терминал (полезно для логов Docker)
+# Set environment variables
 ENV PYTHONUNBUFFERED 1
-# PYTHONDONTWRITEBYTECODE предотвращает создание .pyc файлов Python
 ENV PYTHONDONTWRITEBYTECODE 1
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Устанавливаем рабочую директорию в /app внутри контейнера
+# Update OS packages and install zlib1g, then clean up
+# This step is crucial for addressing OS-level vulnerabilities like the one in zlib1g.
+# Running it early helps with Docker layer caching.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends zlib1g && \
+    apt-get upgrade -y zlib1g && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set the working directory in the container
 WORKDIR /app
 
-# Копируем файл зависимостей в рабочую директорию
-# Сначала копируем и устанавливаем зависимости, чтобы использовать кэширование слоев Docker.
-# Если requirements.txt не изменился, этот слой не будет пересобираться.
+# Copy the requirements file into the container at /app
 COPY requirements.txt .
 
-# Устанавливаем зависимости
+# Install any needed packages specified in requirements.txt
+# Using --no-cache-dir to reduce image size
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем все остальные файлы приложения из текущей директории (контекста сборки)
-# в рабочую директорию /app в контейнере.
-# Это включает вашу директорию 'app/', 'run.py' и любые другие необходимые файлы.
+# Copy the current directory contents into the container at /app
 COPY . .
-# Если ваш основной код приложения находится в поддиректории 'app',
-# а 'run.py' и 'config.py' (если он используется run:app) находятся в корне,
-# убедитесь, что Gunicorn сможет их найти.
-# Структура:
-# .
-# |- Dockerfile
-# |- requirements.txt
-# |- run.py
-# |- app/
-#    |- __init__.py
-#    |- routes.py
-#    |- models.py
-#    etc.
 
-# Сообщаем Docker, что приложение будет слушать порт 5000
+# Make port 5000 available to the world outside this container
 EXPOSE 5000
 
-# Команда для запуска приложения при старте контейнера
-# Используем Gunicorn для запуска Flask-приложения 'app' из файла 'run.py'
-# 'run:app' означает: в файле 'run.py' найти объект Flask с именем 'app'.
-# '-b 0.0.0.0:5000' заставляет Gunicorn слушать все интерфейсы на порту 5000.
-# '--workers=4' - количество рабочих процессов Gunicorn (можно настроить).
-# '--log-level=info' - уровень логирования.
-CMD ["gunicorn", "-b", "0.0.0.0:5000", "--workers=4", "--log-level=info", "run:app"]
+# Define environment variable for the Gunicorn workers (optional, can be overridden)
+ENV GUNICORN_WORKERS 4
+
+# Run app.py when the container launches
+# Use Gunicorn as the WSGI server
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "--workers=${GUNICORN_WORKERS}", "--log-level=info", "run:app"]
