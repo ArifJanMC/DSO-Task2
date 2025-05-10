@@ -301,8 +301,38 @@ dynamic_analysis_zap:
   stage: dast_scan
   image: zaproxy/zap-stable
   script:
-    - zap-full-scan.py -t ${STAGING_APP_URL} -r zap-dast-report.html -J gl-dast-report.json -d
-    - ls -la
+    - echo "Starting DAST scan with OWASP ZAP on ${STAGING_APP_URL}"
+    
+    # Create and make writable the ZAP working directory
+    - mkdir -p /zap/wrk
+    - chmod -R 777 /zap/wrk
+    
+    # Start ZAP daemon in the background
+    - zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=true &
+    - echo "Waiting for ZAP to start..."
+    - sleep 30
+    
+    # Use ZAP API to run the scan
+    - echo "Starting spider scan..."
+    - curl "http://localhost:8080/JSON/spider/action/scan/?url=${STAGING_APP_URL}"
+    - echo "Waiting for spider to complete..."
+    - sleep 30
+    
+    # Run active scan
+    - echo "Starting active scan..."
+    - curl "http://localhost:8080/JSON/ascan/action/scan/?url=${STAGING_APP_URL}"
+    - echo "Waiting for active scan to complete..."
+    - sleep 30
+    
+    # Generate reports directly to the GitLab project directory
+    - echo "Generating reports..."
+    - curl "http://localhost:8080/OTHER/core/other/jsonreport/" > gl-dast-report.json
+    - curl "http://localhost:8080/OTHER/core/other/htmlreport/" > zap-dast-report.html
+    
+    # Verify reports were created
+    - echo "Checking for reports:"
+    - ls -la *.json *.html
+    
   artifacts:
     paths:
       - gl-dast-report.json
@@ -312,3 +342,5 @@ dynamic_analysis_zap:
     when: always
   allow_failure: true
   needs: ["deploy_to_staging"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
