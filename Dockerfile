@@ -7,12 +7,12 @@ ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Update OS packages and install zlib1g, then clean up
-# This step is crucial for addressing OS-level vulnerabilities like the one in zlib1g.
+# Update OS packages and install/upgrade zlib1g and libdb5.3, then clean up.
+# This step is crucial for addressing OS-level vulnerabilities.
 # Running it early helps with Docker layer caching.
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends zlib1g && \
-    apt-get upgrade -y zlib1g && \
+    apt-get install -y --no-install-recommends zlib1g libdb5.3 && \
+    apt-get upgrade -y zlib1g libdb5.3 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
