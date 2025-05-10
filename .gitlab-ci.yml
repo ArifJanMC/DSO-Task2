@@ -194,8 +194,8 @@ scan_docker_image:
     name: aquasec/trivy:0.47.0 # Pinned to a version known to have /contrib/gitlab.tpl
     entrypoint: [""] # Override entrypoint to use shell
   variables:
-    TRIVY_EXIT_CODE: "1" # Fail if vulnerabilities are found
-    TRIVY_SEVERITY: "CRITICAL" # Severities to fail on
+    TRIVY_EXIT_CODE: "1" # Fail if vulnerabilities of specified severity are found
+    TRIVY_SEVERITY: "CRITICAL" # Only fail on CRITICAL vulnerabilities
     CI: "true"
     GIT_STRATEGY: none # No need to clone the repo for this job
     TRIVY_USERNAME: "$CI_REGISTRY_USER" # For Trivy to auth with GitLab Registry
@@ -214,19 +214,16 @@ scan_docker_image:
     - time trivy image --download-db-only --cache-dir "$TRIVY_CACHE_DIR"
   script:
     - echo "Scanning Docker image ${FULL_IMAGE_NAME} from registry ${CI_REGISTRY} with Trivy..."
-    # Ensure the trivy image command is a single line or correctly handled by YAML for multi-line commands if needed.
-    # Forcing it to a single line here to avoid shell continuation issues.
     - time trivy image --exit-code ${TRIVY_EXIT_CODE} --severity ${TRIVY_SEVERITY} --format template --template "@/contrib/gitlab.tpl" --output "gl-container-scanning-report.json" --cache-dir "$TRIVY_CACHE_DIR" "${FULL_IMAGE_NAME}"
-    # Optional: Print a summary to the job log for quick review
-    - echo "Trivy scan summary (High and Critical):"
+    - echo "Trivy scan summary (High and Critical) - Job will fail if CRITICAL vulnerabilities are found:"
     - time trivy image --exit-code 0 --severity HIGH,CRITICAL --cache-dir "$TRIVY_CACHE_DIR" "${FULL_IMAGE_NAME}"
   artifacts:
     reports:
-      container_scanning: gl-container-scanning-report.json # GitLab expects this filename for UI integration
-    paths: # Also save the report with a more generic name if needed, or just the one above
+      container_scanning: gl-container-scanning-report.json
+    paths:
       - gl-container-scanning-report.json
     when: always
-  allow_failure: true # Fail the pipeline if TRIVY_EXIT_CODE is met by Trivy
+  allow_failure: true
   needs: ["build_docker_image"]
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_TAG'
@@ -242,6 +239,9 @@ deploy_to_staging:
     - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
   script:
+    - echo "Current working directory: $(pwd)"
+    - echo "Listing files in current directory:"
+    - ls -la
     - echo "Starting deployment to staging server ${STAGING_SERVER_IP} on port ${STAGING_SERVER_SSH_PORT}..."
     - sed "s|\${DOCKER_IMAGE_TO_DEPLOY}|${DOCKER_IMAGE_NAME}|g" docker-compose.staging.yml > docker-compose.staging.processed.yml
     - sshpass -p "$STAGING_SERVER_PASSWORD" scp -P ${STAGING_SERVER_SSH_PORT} -o StrictHostKeyChecking=no docker-compose.staging.processed.yml ${STAGING_SERVER_USER}@${STAGING_SERVER_IP}:${STAGING_DEPLOY_PATH}/docker-compose.yml
@@ -276,10 +276,17 @@ deploy_to_staging:
         sudo docker login -u \"${STAGING_REGISTRY_USER}\" -p \"${STAGING_REGISTRY_PASSWORD}\" ${CI_REGISTRY};
 
         echo 'Pulling the latest application image...';
-        sudo docker-compose -f docker-compose.yml pull app;
+        sudo docker-compose -f docker-compose.yml pull app; # 'app' is the service name in docker-compose.staging.yml
 
-        echo 'Stopping and removing old containers (if any) and starting new ones...';
-        sudo docker-compose -f docker-compose.yml up -d --remove-orphans app;
+        echo 'Stopping and removing old service container (if exists)...';
+        sudo docker-compose -f docker-compose.yml stop app || true; # Stop the service, ignore error if not running
+        sudo docker-compose -f docker-compose.yml rm -f app || true; # Remove the service container, ignore error if not existing
+
+        echo 'Starting new application container...';
+        # Use --force-recreate to ensure it uses the new image even if config appears unchanged
+        # The --build flag is not strictly necessary here if pull was successful and image is tagged correctly,
+        # but can be added if issues persist: --build
+        sudo docker-compose -f docker-compose.yml up -d --force-recreate --remove-orphans app;
 
         echo 'Cleaning up unused Docker images...';
         sudo docker image prune -af;
@@ -302,7 +309,6 @@ dynamic_analysis_zap:
   script:
     - echo "Starting DAST scan with OWASP ZAP on ${ZAP_TARGET_URL}"
     - mkdir -p zap_reports
-    # The ZAP scripts like zap-baseline.py are typically included in the image's PATH
     - zap-baseline.py -t ${ZAP_TARGET_URL} -J zap_reports/${ZAP_REPORT_JSON} -r zap_reports/${ZAP_REPORT_HTML} || true
     - echo "DAST scan completed. Reports are in zap_reports/ directory."
   artifacts:
