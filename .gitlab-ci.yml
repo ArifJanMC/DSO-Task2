@@ -33,6 +33,7 @@ variables:
   DOCKER_IMAGE_NAME: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
   STAGING_SERVER_IP: "146.59.45.19"
   STAGING_SERVER_USER: "ubuntu"
+  STAGING_SERVER_SSH_PORT: "2222" # <-- ADDED SSH PORT VARIABLE
   STAGING_APP_URL: "http://test.dot.arifjan.su" # Your staging domain
   STAGING_DEPLOY_PATH: "/home/ubuntu/book_catalog_staging" # Deployment path on staging server
   ZAP_REPORT_JSON: "zap-report.json"
@@ -198,11 +199,11 @@ deploy_to_staging:
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
     # Ensure SSH_KNOWN_HOSTS variable is set in GitLab CI/CD settings
-    # You can get this by running `ssh-keyscan 146.59.45.19` locally and adding the output to the variable.
+    # You can get this by running `ssh-keyscan -p ${STAGING_SERVER_SSH_PORT} ${STAGING_SERVER_IP}` locally and adding the output to the variable.
     - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
   script:
-    - echo "Starting deployment to staging server ${STAGING_SERVER_IP}..."
+    - echo "Starting deployment to staging server ${STAGING_SERVER_IP} on port ${STAGING_SERVER_SSH_PORT}..."
 
     # Prepare docker-compose.staging.yml by substituting the image tag
     # The DOCKER_IMAGE_NAME variable (e.g., registry.gitlab.com/yourgroup/yourproject:commit_sha) is used here
@@ -210,37 +211,28 @@ deploy_to_staging:
 
     # SCP the processed docker-compose file to the staging server using sshpass
     # Ensure STAGING_SERVER_PASSWORD CI/CD variable is set with the password "devopsservertest"
-    - sshpass -p "$STAGING_SERVER_PASSWORD" scp -o StrictHostKeyChecking=no docker-compose.staging.processed.yml ${STAGING_SERVER_USER}@${STAGING_SERVER_IP}:${STAGING_DEPLOY_PATH}/docker-compose.yml
+    - sshpass -p "$STAGING_SERVER_PASSWORD" scp -P ${STAGING_SERVER_SSH_PORT} -o StrictHostKeyChecking=no docker-compose.staging.processed.yml ${STAGING_SERVER_USER}@${STAGING_SERVER_IP}:${STAGING_DEPLOY_PATH}/docker-compose.yml
     # SCP .env.staging file if you have one and want to use it (optional)
-    # - sshpass -p "$STAGING_SERVER_PASSWORD" scp -o StrictHostKeyChecking=no .env.staging ${STAGING_SERVER_USER}@${STAGING_SERVER_IP}:${STAGING_DEPLOY_PATH}/.env.staging
+    # - sshpass -p "$STAGING_SERVER_PASSWORD" scp -P ${STAGING_SERVER_SSH_PORT} -o StrictHostKeyChecking=no .env.staging ${STAGING_SERVER_USER}@${STAGING_SERVER_IP}:${STAGING_DEPLOY_PATH}/.env.staging
 
     # SSH to the staging server using sshpass and execute deployment commands
-    # The -tt option for ssh is sometimes needed to force pseudo-terminal allocation for sudo password prompts if any,
-    # but for scripted commands, it's often better to ensure sudo doesn't require a password for the specific commands for the CI user.
     - |
-      sshpass -p "$STAGING_SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no ${STAGING_SERVER_USER}@${STAGING_SERVER_IP} "
+      sshpass -p "$STAGING_SERVER_PASSWORD" ssh -p ${STAGING_SERVER_SSH_PORT} -o StrictHostKeyChecking=no ${STAGING_SERVER_USER}@${STAGING_SERVER_IP} "
         echo 'Connected to staging server.';
         set -e; # Exit immediately if a command exits with a non-zero status.
 
         echo 'Updating package list and installing Docker and Docker Compose if not present...';
-        # The following commands assume the 'ubuntu' user can run 'sudo' without a password,
-        # or the password for sudo is handled separately if required.
-        # For CI, it's best if the CI user ('ubuntu' in this case) has passwordless sudo rights
-        # or specific sudo rules for the commands needed.
         if ! command -v docker &> /dev/null; then
           sudo apt-get update -y;
           sudo apt-get install -y docker.io;
           sudo systemctl start docker;
           sudo systemctl enable docker;
-          # Adding user to docker group is good, but for CI script using sudo docker, it's not strictly necessary for the script itself
-          # sudo usermod -aG docker ${STAGING_SERVER_USER};
           echo 'Docker installed.';
         else
           echo 'Docker is already installed.';
         fi;
 
         if ! command -v docker-compose &> /dev/null; then
-          # Ensure compatible docker-compose version is installed
           sudo apt-get install -y docker-compose;
           echo 'Docker Compose installed.';
         else
@@ -248,17 +240,14 @@ deploy_to_staging:
         fi;
 
         echo 'Creating deployment directory ${STAGING_DEPLOY_PATH} if it does not exist...';
-        mkdir -p ${STAGING_DEPLOY_PATH}; # This will be created by the user ubuntu
+        mkdir -p ${STAGING_DEPLOY_PATH};
         cd ${STAGING_DEPLOY_PATH};
 
         echo 'Logging in to GitLab Container Registry on staging server...';
-        # STAGING_REGISTRY_USER and STAGING_REGISTRY_PASSWORD should be set as CI/CD Variables in GitLab
-        # These are credentials for the staging server to pull from your GitLab registry.
-        # Using sudo for docker login.
         sudo docker login -u \"${STAGING_REGISTRY_USER}\" -p \"${STAGING_REGISTRY_PASSWORD}\" ${CI_REGISTRY};
 
         echo 'Pulling the latest application image...';
-        sudo docker-compose -f docker-compose.yml pull app; # 'app' is the service name in docker-compose.staging.yml
+        sudo docker-compose -f docker-compose.yml pull app;
 
         echo 'Stopping and removing old containers (if any) and starting new ones...';
         sudo docker-compose -f docker-compose.yml up -d --remove-orphans app;
