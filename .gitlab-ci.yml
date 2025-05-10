@@ -302,28 +302,35 @@ dynamic_analysis_zap:
   image: zaproxy/zap-stable
   variables:
     ZAP_TARGET_URL: ${STAGING_APP_URL}
-    ZAP_CI_DIR: "${CI_PROJECT_DIR}/zap_dast_session"
-    ZAP_REPORT_JSON_FILENAME: "gl-dast-report.json"
-    ZAP_REPORT_HTML_FILENAME: "zap-dast-report.html"
+    # Use ZAP's default working directory
+    ZAP_REPORT_JSON: "/zap/wrk/gl-dast-report.json"
+    ZAP_REPORT_HTML: "/zap/wrk/zap-dast-report.html"
   script:
     - echo "Starting DAST scan with OWASP ZAP on ${ZAP_TARGET_URL}"
-    - mkdir -p ${ZAP_CI_DIR}
-    - chmod -R 777 ${ZAP_CI_DIR}
-    # Fix: Remove backslashes and put command on one line
-    - zap-baseline.py -t ${ZAP_TARGET_URL} -J ${ZAP_REPORT_JSON_FILENAME} -r ${ZAP_REPORT_HTML_FILENAME} -z "-dir ${ZAP_CI_DIR}"
+    # Make sure the default ZAP working directory exists and is writable
+    - mkdir -p /zap/wrk
+    - chmod -R 777 /zap/wrk
+    
+    # Run the baseline scan using absolute paths to the ZAP default directory
+    - zap-baseline.py -t ${ZAP_TARGET_URL} -J ${ZAP_REPORT_JSON} -r ${ZAP_REPORT_HTML}
+    
     # Debug: Check if reports were generated
-    - echo "DAST scan completed. Checking for reports in $(pwd):"
-    - ls -la 
-    # If no reports found, search for them
-    - echo "Searching for report files..."
-    - find / -name "${ZAP_REPORT_JSON_FILENAME}" -o -name "${ZAP_REPORT_HTML_FILENAME}" 2>/dev/null || echo "No report files found"
+    - echo "Reports should be in /zap/wrk:"
+    - ls -la /zap/wrk/
+    
+    # Copy reports to the CI_PROJECT_DIR for GitLab to collect as artifacts
+    - cp ${ZAP_REPORT_JSON} ${CI_PROJECT_DIR}/gl-dast-report.json || echo "JSON report not found"
+    - cp ${ZAP_REPORT_HTML} ${CI_PROJECT_DIR}/zap-dast-report.html || echo "HTML report not found"
+    
+    # Verify the files are in the expected location
+    - echo "Files in project directory:"
+    - ls -la ${CI_PROJECT_DIR}
   artifacts:
     paths:
-      - "${ZAP_REPORT_JSON_FILENAME}"
-      - "${ZAP_REPORT_HTML_FILENAME}"
-      - zap_dast_session/
+      - gl-dast-report.json
+      - zap-dast-report.html
     reports:
-      dast: "${ZAP_REPORT_JSON_FILENAME}"
+      dast: gl-dast-report.json
     when: always
   allow_failure: true
   needs: ["deploy_to_staging"]
