@@ -302,23 +302,30 @@ dynamic_analysis_zap:
   image: zaproxy/zap-stable # Using the new official ZAP image
   variables:
     ZAP_TARGET_URL: ${STAGING_APP_URL}
-    ZAP_CI_DIR: "${CI_PROJECT_DIR}/zap_session_data"
-  script: # Standard YAML list for these commands
+    ZAP_CI_DIR: "${CI_PROJECT_DIR}/zap_dast_session" # Changed directory name for clarity
+    ZAP_REPORT_JSON_FILENAME: "gl-dast-report.json" # Standard name for GitLab DAST report
+    ZAP_REPORT_HTML_FILENAME: "zap-dast-report.html"
+  script:
     - echo "Starting DAST scan with OWASP ZAP on ${ZAP_TARGET_URL}"
-    - mkdir -p zap_reports
-    - mkdir -p ${ZAP_CI_DIR}
-    - chmod -R 777 ${ZAP_CI_DIR}
+    - mkdir -p ${ZAP_CI_DIR} # Create directory for ZAP's internal use
+    - chmod -R 777 ${ZAP_CI_DIR} # Ensure it's writable by ZAP user
+    # The zap-baseline.py script will run in $CI_PROJECT_DIR.
+    # Reports will be generated in $CI_PROJECT_DIR.
     - zap-baseline.py -t ${ZAP_TARGET_URL} \
-        -J "${CI_PROJECT_DIR}/zap_reports/${ZAP_REPORT_JSON}" \
-        -r "${CI_PROJECT_DIR}/zap_reports/${ZAP_REPORT_HTML}" \
-        -z "-dir ${ZAP_CI_DIR}" \
-        || true
-    - echo "DAST scan completed. Reports are in zap_reports/ directory."
+        -J "${ZAP_REPORT_JSON_FILENAME}" \
+        -r "${ZAP_REPORT_HTML_FILENAME}" \
+        -z "-dir ${ZAP_CI_DIR}"
+        # Removed '|| true' to see the actual exit code of zap-baseline.py
+        # The job has allow_failure: true, so pipeline will continue if zap-baseline.py fails.
+    - echo "DAST scan completed. Checking for reports in $(pwd):"
+    - ls -l . # List files in current directory ($CI_PROJECT_DIR)
   artifacts:
     paths:
-      - zap_reports/${ZAP_REPORT_JSON}
-      - zap_reports/${ZAP_REPORT_HTML}
-      - zap_session_data/ # Optionally artifact session data for debugging
+      - "${ZAP_REPORT_JSON_FILENAME}" # Path relative to $CI_PROJECT_DIR
+      - "${ZAP_REPORT_HTML_FILENAME}" # Path relative to $CI_PROJECT_DIR
+      - zap_dast_session/ # Artifact ZAP's working directory for debugging
+    reports: # For GitLab DAST UI integration
+      dast: "${ZAP_REPORT_JSON_FILENAME}"
     when: always
   allow_failure: true # Keep as true until DAST is stable and tuned
   needs: ["deploy_to_staging"]
