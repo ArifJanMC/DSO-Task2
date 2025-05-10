@@ -154,12 +154,12 @@ build_docker_image:
   image: docker:latest
   services:
     - docker:dind
-  before_script:
-    - echo "Current CI_REGISTRY is: $CI_REGISTRY"
-    - echo "Current CI_REGISTRY_USER is: $CI_REGISTRY_USER"
-    - if [ -z "$CI_REGISTRY" ]; then echo "ERROR: CI_REGISTRY is not set!"; exit 1; fi
-    - echo "Logging in to GitLab Container Registry: $CI_REGISTRY"
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
+  before_script: |
+    echo "Current CI_REGISTRY is: $CI_REGISTRY"
+    echo "Current CI_REGISTRY_USER is: $CI_REGISTRY_USER"
+    if [ -z "$CI_REGISTRY" ]; then echo "ERROR: CI_REGISTRY is not set!"; exit 1; fi
+    echo "Logging in to GitLab Container Registry: $CI_REGISTRY"
+    docker login -u "$CI_REGISTRY_USER" -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
   script:
     - echo "Building Docker image from ${DOCKERFILE_PATH} with context ${DOCKER_CONTEXT_PATH}..."
     - docker build -t ${DOCKER_IMAGE_NAME} -f ${DOCKERFILE_PATH} ${DOCKER_CONTEXT_PATH}
@@ -177,10 +177,10 @@ scan_docker_image:
     TRIVY_SEVERITY: "HIGH,CRITICAL"
     CI: "true"
     GIT_STRATEGY: none
-  before_script:
-    - echo "Logging in to GitLab Container Registry: $CI_REGISTRY (for Trivy to pull)"
-    - if [ -z "$CI_REGISTRY" ]; then echo "ERROR: CI_REGISTRY is not set for Trivy!"; exit 1; fi
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
+  before_script: |
+    echo "Logging in to GitLab Container Registry: $CI_REGISTRY (for Trivy to pull)"
+    if [ -z "$CI_REGISTRY" ]; then echo "ERROR: CI_REGISTRY is not set for Trivy!"; exit 1; fi
+    docker login -u "$CI_REGISTRY_USER" -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
   script:
     - echo "Scanning Docker image ${DOCKER_IMAGE_NAME} for vulnerabilities with Trivy..."
     - trivy image --exit-code $TRIVY_EXIT_CODE --severity $TRIVY_SEVERITY --format gitlab --output trivy-gitlab-report.json ${DOCKER_IMAGE_NAME}
