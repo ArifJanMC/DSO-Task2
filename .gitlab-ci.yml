@@ -302,35 +302,32 @@ dynamic_analysis_zap:
   image: zaproxy/zap-stable
   variables:
     ZAP_TARGET_URL: ${STAGING_APP_URL}
-    # Use ZAP's default working directory
-    ZAP_REPORT_JSON: "/zap/wrk/gl-dast-report.json"
-    ZAP_REPORT_HTML: "/zap/wrk/zap-dast-report.html"
+    # Use simple filenames without paths
+    ZAP_REPORT_JSON: "gl-dast-report.json"
+    ZAP_REPORT_HTML: "zap-dast-report.html"
   script:
     - echo "Starting DAST scan with OWASP ZAP on ${ZAP_TARGET_URL}"
-    # Make sure the default ZAP working directory exists and is writable
+    # Make sure the default ZAP working directory exists
     - mkdir -p /zap/wrk
     - chmod -R 777 /zap/wrk
     
-    # Run the baseline scan using absolute paths to the ZAP default directory
+    # Run the ZAP baseline scan with output to the current directory
+    - cd ${CI_PROJECT_DIR}
     - zap-baseline.py -t ${ZAP_TARGET_URL} -J ${ZAP_REPORT_JSON} -r ${ZAP_REPORT_HTML}
     
-    # Debug: Check if reports were generated
-    - echo "Reports should be in /zap/wrk:"
-    - ls -la /zap/wrk/
-    
-    # Copy reports to the CI_PROJECT_DIR for GitLab to collect as artifacts
-    - cp ${ZAP_REPORT_JSON} ${CI_PROJECT_DIR}/gl-dast-report.json || echo "JSON report not found"
-    - cp ${ZAP_REPORT_HTML} ${CI_PROJECT_DIR}/zap-dast-report.html || echo "HTML report not found"
-    
-    # Verify the files are in the expected location
-    - echo "Files in project directory:"
+    # Debug: Show files in current directory after scan
+    - echo "Files in current directory:"
     - ls -la ${CI_PROJECT_DIR}
+    
+    # Debug: Search for report files throughout the filesystem
+    - echo "Searching for report files..."
+    - find / -name "${ZAP_REPORT_JSON}" -o -name "${ZAP_REPORT_HTML}" 2>/dev/null || echo "No report files found"
   artifacts:
     paths:
-      - gl-dast-report.json
-      - zap-dast-report.html
+      - ${ZAP_REPORT_JSON}
+      - ${ZAP_REPORT_HTML}
     reports:
-      dast: gl-dast-report.json
+      dast: ${ZAP_REPORT_JSON}
     when: always
   allow_failure: true
   needs: ["deploy_to_staging"]
