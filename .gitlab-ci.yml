@@ -63,10 +63,13 @@ test_application:
     - source venv/bin/activate
     - pip config set global.cache-dir "$(pwd)/.cache/pip"
     - pip install -r ${REQUIREMENTS_FILE}
-    - pip install pytest
+    - pip install pytest pytest-cov pytest-junit
   script:
     - echo "Running unit tests..."
-    - python -m pytest ${TEST_FILES_PATH}test_app.py
+    - python -m pytest ${TEST_FILES_PATH}test_app.py --junitxml=junit-report.xml
+  artifacts:
+    reports:
+      junit: junit-report.xml
   allow_failure: false
 
 # --- INTEGRATION TESTING STAGE ---
@@ -86,10 +89,13 @@ test_database_integration:
     - source venv/bin/activate
     - pip config set global.cache-dir "$(pwd)/.cache/pip"
     - pip install -r ${REQUIREMENTS_FILE}
-    - pip install pytest psycopg2-binary
+    - pip install pytest pytest-cov pytest-junit psycopg2-binary
   script:
     - echo "Running database integration tests..."
-    - python -m pytest ${TEST_FILES_PATH}test_integration_database.py
+    - python -m pytest ${TEST_FILES_PATH}test_integration_database.py --junitxml=junit-integration-report.xml
+  artifacts:
+    reports:
+      junit: junit-integration-report.xml
   allow_failure: false
 
 # --- DEPENDENCY SCANNING STAGE ---
