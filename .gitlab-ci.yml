@@ -63,11 +63,13 @@ test_application:
     - source venv/bin/activate
     - pip config set global.cache-dir "$(pwd)/.cache/pip"
     - pip install -r ${REQUIREMENTS_FILE}
-    - pip install pytest pytest-cov pytest-junit
+    - pip install pytest-cov # Remove pytest-junit as it doesn't exist
   script:
     - echo "Running unit tests..."
-    - python -m pytest ${TEST_FILES_PATH}test_app.py --junitxml=junit-report.xml
+    - python -m pytest ${TEST_FILES_PATH}test_app.py --junitxml=junit-report.xml # pytest has built-in JUnit XML support
   artifacts:
+    paths:
+      - junit-report.xml # Also store the raw file for debugging
     reports:
       junit: junit-report.xml
   allow_failure: false
@@ -89,11 +91,13 @@ test_database_integration:
     - source venv/bin/activate
     - pip config set global.cache-dir "$(pwd)/.cache/pip"
     - pip install -r ${REQUIREMENTS_FILE}
-    - pip install pytest pytest-cov pytest-junit psycopg2-binary
+    - pip install pytest-cov psycopg2-binary # Remove pytest-junit
   script:
     - echo "Running database integration tests..."
     - python -m pytest ${TEST_FILES_PATH}test_integration_database.py --junitxml=junit-integration-report.xml
   artifacts:
+    paths:
+      - junit-integration-report.xml # Store the raw file too
     reports:
       junit: junit-integration-report.xml
   allow_failure: false
