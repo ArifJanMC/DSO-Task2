@@ -1,0 +1,33 @@
+name: Suspicious User Agent Detection
+type: frequency
+index: nginx-*
+num_events: 5
+timeframe:
+  minutes: 10
+
+filter:
+- terms:
+    tags: ["suspicious_user_agent"]
+
+query_key: remote_addr
+
+alert:
+- "email"
+- "webhook"
+
+alert_subject: "Suspicious User Agent Activity from {0}"
+
+alert_text: |
+  Suspicious User Agent detected from IP: {0}
+  User Agent: {1}
+  Number of requests: {2}
+  
+  Common suspicious agents:
+  - Security scanners (sqlmap, nikto, nmap)
+  - Empty or missing User-Agent
+  - Known bot/crawler patterns
+
+alert_text_args:
+- remote_addr
+- http_user_agent
+- num_matches

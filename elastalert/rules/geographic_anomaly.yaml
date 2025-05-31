@@ -1,0 +1,31 @@
+name: Geographic Anomaly Detection
+type: new_term
+index: nginx-*
+fields:
+- "geoip.country_code"
+
+query_key: remote_addr
+
+alert:
+- "email"
+
+alert_subject: "New Country Access: {0} from {1}"
+
+alert_text: |
+  Access from new geographic location detected!
+  
+  IP Address: {0}
+  Country: {1}
+  City: {2}
+  Request: {3}
+  
+  This might indicate:
+  - Legitimate international traffic
+  - Use of VPN/Proxy
+  - Compromised credentials
+
+alert_text_args:
+- remote_addr
+- geoip.country_name
+- geoip.city_name
+- request_uri

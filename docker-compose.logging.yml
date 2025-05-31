@@ -1,0 +1,156 @@
+# ELK Stack для сбора и анализа логов
+services:
+  # Elasticsearch - хранилище логов
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
+    container_name: elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=es-docker-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - logging_net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Logstash - обработка логов
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.3
+    container_name: logstash
+    volumes:
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+    ports:
+      - "5044:5044"
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+      - "9600:9600"
+    environment:
+      LS_JAVA_OPTS: "-Xmx512m -Xms512m"
+    networks:
+      - logging_net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  # Kibana - визуализация
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.3
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+    networks:
+      - logging_net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Filebeat - сбор логов
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.3
+    container_name: filebeat
+    user: root
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - nginx_logs:/var/log/nginx:ro
+      - app_logs:/var/log/app:ro
+    networks:
+      - logging_net
+    depends_on:
+      logstash:
+        condition: service_started
+    command: filebeat -e -strict.perms=false
+
+  # Nginx с настроенным логированием
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_logging
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - nginx_logs:/var/log/nginx
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - logging_net
+      - app_net
+    depends_on:
+      - app
+
+  # Flask приложение
+  app:
+    build: .
+    container_name: book_catalog_app
+    environment:
+      FLASK_CONFIG: production
+      PYTHONUNBUFFERED: 1
+    volumes:
+      - app_logs:/var/log/app
+    networks:
+      - app_net
+    expose:
+      - "5000"
+
+  # ElastAlert2 для уведомлений
+  elastalert:
+    image: ghcr.io/jertel/elastalert2/elastalert2:latest
+    container_name: elastalert
+    volumes:
+      - ./elastalert/config.yaml:/opt/elastalert/config.yaml:ro
+      - ./elastalert/rules:/opt/elastalert/rules:ro
+    networks:
+      - logging_net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  # Redis для кеширования и rate limiting
+  redis:
+    image: redis:alpine
+    container_name: redis_logging
+    ports:
+      - "6379:6379"
+    networks:
+      - app_net
+    volumes:
+      - redis_data:/data
+
+volumes:
+  elasticsearch_data:
+  nginx_logs:
+  app_logs:
+  redis_data:
+
+networks:
+  logging_net:
+    driver: bridge
+  app_net:
+    driver: bridge

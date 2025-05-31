@@ -1,0 +1,46 @@
+# Основная конфигурация ElastAlert2
+
+# Папка с правилами
+rules_folder: /opt/elastalert/rules
+
+# Как часто запускать ElastAlert для проверки правил
+run_every:
+  minutes: 1
+
+# Размер буфера для запросов
+buffer_time:
+  minutes: 15
+
+# Настройки Elasticsearch
+es_host: elasticsearch
+es_port: 9200
+
+# Использовать SSL
+use_ssl: False
+verify_certs: False
+
+# Индекс для хранения данных ElastAlert
+writeback_index: elastalert_status
+writeback_alias: elastalert_alerts
+
+# Если правило молчит больше этого времени, отправить уведомление
+alert_time_limit:
+  days: 2
+
+# Email настройки (настройте под ваш SMTP сервер)
+smtp_host: smtp.gmail.com
+smtp_port: 587
+smtp_ssl: false
+smtp_auth_file: /opt/elastalert/smtp_auth.yaml
+from_addr: alerts@example.com
+email_reply_to: noreply@example.com
+
+# Webhook настройки для отправки в Slack/Discord/Telegram
+# webhook_url: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+
+# Настройки для отладки
+verbose: false
+log_level: INFO
+
+# Временная зона
+timezone: UTC

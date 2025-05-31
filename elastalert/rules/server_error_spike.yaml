@@ -1,0 +1,36 @@
+name: Server Error Spike
+type: spike
+index: nginx-*
+spike_height: 3
+spike_type: up
+timeframe:
+  minutes: 5
+
+filter:
+- range:
+    status:
+      gte: 500
+      lt: 600
+
+alert:
+- "email"
+- "webhook"
+
+alert_subject: "Server Error Spike Detected"
+
+alert_text: |
+  Significant increase in server errors (5xx) detected!
+  
+  Current error rate: {0}
+  Normal error rate: {1}
+  Spike height: {2}x normal
+  
+  This might indicate:
+  - Application issues
+  - Database problems
+  - Resource exhaustion
+
+alert_text_args:
+- spike_count
+- reference_count
+- spike_height

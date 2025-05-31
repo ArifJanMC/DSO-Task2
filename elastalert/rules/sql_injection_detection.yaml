@@ -1,0 +1,39 @@
+name: SQL Injection Attempt Detection
+type: any
+index: security-alerts-*
+
+filter:
+- terms:
+    tags: ["sql_injection"]
+
+alert:
+- "email"
+- "webhook"
+
+alert_subject: "CRITICAL: SQL Injection Attempt Detected"
+
+alert_text: |
+  SQL Injection attempt detected!
+  
+  IP Address: {0}
+  Request URI: {1}
+  User Agent: {2}
+  Attack Type: {3}
+  Severity: {4}
+  
+  Immediate action required!
+
+alert_text_args:
+- remote_addr
+- request_uri
+- http_user_agent
+- attack_type
+- severity
+
+include:
+- remote_addr
+- request_uri
+- http_user_agent
+- attack_type
+- severity
+- "@timestamp"

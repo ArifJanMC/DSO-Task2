@@ -1,0 +1,44 @@
+name: Multiple 404 Errors Detection
+type: frequency
+index: nginx-*
+num_events: 10
+timeframe:
+  minutes: 5
+
+filter:
+- terms:
+    status: [404]
+
+query_key: remote_addr
+
+alert:
+- "email"
+- "webhook"
+
+email:
+- "security@example.com"
+
+alert_subject: "Multiple 404 Errors from {0}"
+alert_subject_args:
+- remote_addr
+
+alert_text: |
+  Multiple 404 errors detected from IP: {0}
+  This might indicate directory/file enumeration attempt.
+  
+  Number of 404 errors: {1}
+  Time period: last 5 minutes
+  
+  Sample requests:
+  {2}
+
+alert_text_args:
+- remote_addr
+- num_matches
+- request_uri
+
+include:
+- remote_addr
+- request_uri
+- http_user_agent
+- "@timestamp"

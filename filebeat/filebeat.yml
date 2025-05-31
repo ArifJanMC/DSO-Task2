@@ -1,0 +1,124 @@
+filebeat.inputs:
+  # Nginx access logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/access.log
+      - /var/log/nginx/app_access.log
+    fields:
+      log_type: nginx_access
+      service: nginx
+    fields_under_root: true
+    json.keys_under_root: true
+    json.add_error_key: true
+    json.message_key: log
+
+  # Nginx error logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/error.log
+      - /var/log/nginx/app_error.log
+    fields:
+      log_type: nginx_error
+      service: nginx
+    fields_under_root: true
+    multiline.pattern: '^\d{4}/\d{2}/\d{2}'
+    multiline.negate: true
+    multiline.match: after
+
+  # Nginx security logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/security.log
+    fields:
+      log_type: nginx_security
+      service: nginx
+    fields_under_root: true
+
+  # Suspicious activity logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/suspicious.log
+    fields:
+      log_type: suspicious_activity
+      service: nginx
+      alert_priority: high
+    fields_under_root: true
+
+  # Denied access logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/denied.log
+    fields:
+      log_type: access_denied
+      service: nginx
+      alert_priority: medium
+    fields_under_root: true
+
+  # Application logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/app/*.log
+    fields:
+      log_type: application
+      service: book_catalog
+    fields_under_root: true
+
+  # Docker container logs
+  - type: container
+    enabled: true
+    paths:
+      - '/var/lib/docker/containers/*/*.log'
+    processors:
+      - add_docker_metadata:
+          host: "unix:///var/run/docker.sock"
+
+# Процессоры для обогащения данных
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_docker_metadata: ~
+  - add_locale: ~
+  - decode_json_fields:
+      fields: ["message"]
+      target: ""
+      overwrite_keys: true
+      add_error_key: true
+  - timestamp:
+      field: time_local
+      layouts:
+        - '02/Jan/2006:15:04:05 -0700'
+      test:
+        - '14/Aug/2023:12:34:56 +0000'
+  - drop_event:
+      when:
+        or:
+          - equals:
+              request_uri: "/health"
+          - equals:
+              request_uri: "/nginx_status"
+
+# Вывод в Logstash
+output.logstash:
+  hosts: ["logstash:5044"]
+  bulk_max_size: 2048
+  compression_level: 3
+  
+# Мониторинг Filebeat
+monitoring.enabled: true
+monitoring.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+
+# Логирование
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644

@@ -1,0 +1,36 @@
+name: Rate Limit Violation
+type: frequency
+index: nginx-*
+num_events: 50
+timeframe:
+  minutes: 1
+
+query_key: remote_addr
+
+filter:
+- query:
+    query_string:
+      query: "NOT request_uri:/health AND NOT request_uri:/nginx_status"
+
+alert:
+- "email"
+- "webhook"
+
+alert_subject: "Rate Limit Violation from {0}"
+alert_subject_args:
+- remote_addr
+
+alert_text: |
+  Excessive requests detected from IP: {0}
+  Number of requests: {1} in the last minute
+  
+  This might indicate:
+  - DDoS attempt
+  - Bot activity
+  - API abuse
+
+include:
+- remote_addr
+- request_uri
+- http_user_agent
+- geoip.country_name

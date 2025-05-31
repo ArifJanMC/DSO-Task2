@@ -1,0 +1,30 @@
+name: Multiple 403 Forbidden Errors
+type: frequency
+index: nginx-*
+num_events: 10
+timeframe:
+  minutes: 5
+
+filter:
+- terms:
+    status: [403]
+
+query_key: remote_addr
+
+alert:
+- "email"
+- "webhook"
+
+alert_subject: "Access Violation: Multiple 403 Errors from {0}"
+
+alert_text: |
+  Multiple access violations (403 errors) from IP: {0}
+  This might indicate attempts to access restricted resources.
+  
+  Number of violations: {1}
+  Sample blocked requests: {2}
+
+alert_text_args:
+- remote_addr
+- num_matches
+- request_uri
