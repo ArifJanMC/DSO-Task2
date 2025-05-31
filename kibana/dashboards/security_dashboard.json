@@ -1,0 +1,93 @@
+{
+  "attributes": {
+    "title": "Nginx Security Dashboard",
+    "description": "Dashboard for monitoring Nginx security events, anomalous activities, and errors.",
+    "panelsJSON": JSON.stringify([
+      {
+        "panelIndex": "1",
+        "gridData": { "x": 0, "y": 0, "w": 24, "h": 10, "i": "1" },
+        "type": "visualization",
+        "embeddableConfig": {
+          "attributes": {
+            "title": "Count of 404 Errors (Last 15 min)",
+            "visualization": {
+              "id": "YOUR_404_COUNT_VISUALIZATION_ID" // Replace with actual ID from Kibana
+            }
+          }
+        }
+      },
+      {
+        "panelIndex": "2",
+        "gridData": { "x": 24, "y": 0, "w": 24, "h": 10, "i": "2" },
+        "type": "visualization",
+        "embeddableConfig": {
+          "attributes": {
+            "title": "Count of 403 Errors (Last 15 min)",
+            "visualization": {
+              "id": "YOUR_403_COUNT_VISUALIZATION_ID" // Replace with actual ID from Kibana
+            }
+          }
+        }
+      },
+      {
+        "panelIndex": "3",
+        "gridData": { "x": 0, "y": 10, "w": 48, "h": 12, "i": "3" },
+        "type": "visualization",
+        "embeddableConfig": {
+          "attributes": {
+            "title": "Top Nginx Request URIs by Count",
+            "visualization": {
+              "id": "YOUR_TOP_URIS_VISUALIZATION_ID" // Replace with actual ID from Kibana
+            }
+          }
+        }
+      }
+      // Add more panels for SQLi attempts, XSS, suspicious UAs, rate limits etc.
+    ]),
+    "optionsJSON": JSON.stringify({
+      "darkTheme": false,
+      "useMargins": true
+    }),
+    "timeRestore": true,
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": JSON.stringify({
+        "filter": [],
+        "query": {
+          "language": "kuery",
+          "query": ""
+        },
+        "indexRefName": "kibanaSavedObjectMeta.searchSourceJSON.index"
+      })
+    },
+    "version": 1, // Or your Kibana version if needed for compatibility
+    "timeFrom": "now-15m",
+    "timeTo": "now",
+    "refreshInterval": {
+      "pause": true,
+      "value": 0
+    }
+  },
+  "references": [ // This section is important for associating visualizations
+    {
+      "name": "kibanaSavedObjectMeta.searchSourceJSON.index",
+      "type": "index-pattern",
+      "id": "YOUR_NGINX_INDEX_PATTERN_ID" // Replace with your Nginx index pattern ID (e.g., "nginx-*")
+    },
+    {
+      "name": "panel_0_source", // Corresponds to panelIndex if you map them. This naming can vary.
+      "type": "visualization",
+      "id": "YOUR_404_COUNT_VISUALIZATION_ID" // ID for the first visualization
+    },
+    {
+      "name": "panel_1_source",
+      "type": "visualization",
+      "id": "YOUR_403_COUNT_VISUALIZATION_ID" // ID for the second visualization
+    },
+    {
+      "name": "panel_2_source",
+      "type": "visualization",
+      "id": "YOUR_TOP_URIS_VISUALIZATION_ID" // ID for the third visualization
+    }
+    // Add references for every visualization ID used in panelsJSON
+  ]
+}

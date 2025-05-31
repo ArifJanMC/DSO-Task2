@@ -20,7 +20,7 @@ class DatabaseService:
     def init_postgres_db(app, uri):
         """Инициализация PostgreSQL базы данных."""
         app.config['SQLALCHEMY_DATABASE_URI'] = uri
-        db.init_app(app)
+        # db.init_app(app)
         with app.app_context():
             db.create_all()
 
@@ -28,7 +28,7 @@ class DatabaseService:
     def init_mysql_db(app, uri):
         """Инициализация MySQL базы данных."""
         app.config['SQLALCHEMY_DATABASE_URI'] = uri
-        db.init_app(app)
+        # db.init_app(app)
         with app.app_context():
             db.create_all()
 
