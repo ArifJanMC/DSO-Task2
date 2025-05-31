@@ -10,6 +10,9 @@ alert:
 - "email"
 - "webhook"
 
+email:
+- "me@arifgjan.ru"
+
 alert_subject: "CRITICAL: SQL Injection Attempt Detected"
 
 alert_text: |

@@ -9,6 +9,9 @@ query_key: remote_addr
 alert:
 - "email"
 
+email:
+- "me@arifgjan.ru"
+
 alert_subject: "New Country Access: {0} from {1}"
 
 alert_text: |

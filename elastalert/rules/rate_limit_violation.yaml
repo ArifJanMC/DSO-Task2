@@ -16,6 +16,9 @@ alert:
 - "email"
 - "webhook"
 
+email:
+- "me@arifgjan.ru"
+
 alert_subject: "Rate Limit Violation from {0}"
 alert_subject_args:
 - remote_addr

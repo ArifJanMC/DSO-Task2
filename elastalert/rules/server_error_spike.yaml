@@ -16,6 +16,9 @@ alert:
 - "email"
 - "webhook"
 
+email:
+- "me@arifgjan.ru"
+
 alert_subject: "Server Error Spike Detected"
 
 alert_text: |

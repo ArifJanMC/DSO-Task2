@@ -16,7 +16,7 @@ alert:
 - "webhook"
 
 email:
-- "security@example.com"
+- "me@arifgjan.ru"
 
 alert_subject: "Multiple 404 Errors from {0}"
 alert_subject_args:

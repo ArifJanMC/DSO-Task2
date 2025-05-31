@@ -15,6 +15,9 @@ alert:
 - "email"
 - "webhook"
 
+email:
+- "me@arifgjan.ru"
+
 alert_subject: "Suspicious User Agent Activity from {0}"
 
 alert_text: |
