@@ -32,10 +32,16 @@ curl -X POST "$KIBANA_URL/api/saved_objects/index-pattern/security-alerts-*" \
   }
 }'
 
-echo "Creating visualizations..."
+echo "Creating visualizations and capturing IDs..."
 
-# 404 Errors Count
-curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
+# Function to extract ID from curl response (requires jq)
+# If jq is not available, you might need to use grep/sed/awk, which is less robust.
+extract_id() {
+    echo "$1" | jq -r .id
+}
+
+# 1. 404 Errors Count
+VIS_404_RESPONSE=$(curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
 -H "Content-Type: application/json" \
 -H "kbn-xsrf: true" \
 -d '{
@@ -54,10 +60,12 @@ curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
       "id": "nginx-*"
     }
   ]
-}'
+}')
+VIS_404_ID=$(extract_id "$VIS_404_RESPONSE")
+echo "404 Errors Count Visualization ID: $VIS_404_ID"
 
-# 403 Errors Count
-curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
+# 2. 403 Errors Count
+VIS_403_RESPONSE=$(curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
 -H "Content-Type: application/json" \
 -H "kbn-xsrf: true" \
 -d '{
@@ -76,10 +84,12 @@ curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
       "id": "nginx-*"
     }
   ]
-}'
+}')
+VIS_403_ID=$(extract_id "$VIS_403_RESPONSE")
+echo "403 Errors Count Visualization ID: $VIS_403_ID"
 
-# Top IPs by Request Count
-curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
+# 3. Top IPs by Request Count
+VIS_TOP_IP_RESPONSE=$(curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
 -H "Content-Type: application/json" \
 -H "kbn-xsrf: true" \
 -d '{
@@ -98,10 +108,12 @@ curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
       "id": "nginx-*"
     }
   ]
-}'
+}')
+VIS_TOP_IP_ID=$(extract_id "$VIS_TOP_IP_RESPONSE")
+echo "Top IPs Visualization ID: $VIS_TOP_IP_ID"
 
-# Security Alerts Over Time
-curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
+# 4. Security Alerts Over Time
+VIS_ALERTS_TIME_RESPONSE=$(curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
 -H "Content-Type: application/json" \
 -H "kbn-xsrf: true" \
 -d '{
@@ -120,10 +132,12 @@ curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
       "id": "security-alerts-*"
     }
   ]
-}'
+}')
+VIS_ALERTS_TIME_ID=$(extract_id "$VIS_ALERTS_TIME_RESPONSE")
+echo "Security Alerts Over Time Visualization ID: $VIS_ALERTS_TIME_ID"
 
-# Attack Types Distribution
-curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
+# 5. Attack Types Distribution
+VIS_ATTACK_TYPES_RESPONSE=$(curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
 -H "Content-Type: application/json" \
 -H "kbn-xsrf: true" \
 -d '{
@@ -142,10 +156,12 @@ curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
       "id": "security-alerts-*"
     }
   ]
-}'
+}')
+VIS_ATTACK_TYPES_ID=$(extract_id "$VIS_ATTACK_TYPES_RESPONSE")
+echo "Attack Types Distribution Visualization ID: $VIS_ATTACK_TYPES_ID"
 
-# Suspicious User Agents
-curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
+# 6. Suspicious User Agents
+VIS_SUSPICIOUS_AGENTS_RESPONSE=$(curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
 -H "Content-Type: application/json" \
 -H "kbn-xsrf: true" \
 -d '{
@@ -164,10 +180,12 @@ curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
       "id": "nginx-*"
     }
   ]
-}'
+}')
+VIS_SUSPICIOUS_AGENTS_ID=$(extract_id "$VIS_SUSPICIOUS_AGENTS_RESPONSE")
+echo "Suspicious User Agents Visualization ID: $VIS_SUSPICIOUS_AGENTS_ID"
 
-# HTTP Status Codes Distribution
-curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
+# 7. HTTP Status Codes Distribution
+VIS_STATUS_CODES_RESPONSE=$(curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
 -H "Content-Type: application/json" \
 -H "kbn-xsrf: true" \
 -d '{
@@ -186,34 +204,50 @@ curl -X POST "$KIBANA_URL/api/saved_objects/visualization" \
       "id": "nginx-*"
     }
   ]
-}'
+}')
+VIS_STATUS_CODES_ID=$(extract_id "$VIS_STATUS_CODES_RESPONSE")
+echo "HTTP Status Codes Visualization ID: $VIS_STATUS_CODES_ID"
+
 
 echo "Creating Security Dashboard..."
+
+# Construct the references JSON
+REFERENCES_JSON="[
+  {\"name\":\"panel_1\",\"type\":\"visualization\",\"id\":\"${VIS_404_ID}\"},
+  {\"name\":\"panel_2\",\"type\":\"visualization\",\"id\":\"${VIS_403_ID}\"},
+  {\"name\":\"panel_3\",\"type\":\"visualization\",\"id\":\"${VIS_TOP_IP_ID}\"},
+  {\"name\":\"panel_4\",\"type\":\"visualization\",\"id\":\"${VIS_ALERTS_TIME_ID}\"},
+  {\"name\":\"panel_5\",\"type\":\"visualization\",\"id\":\"${VIS_ATTACK_TYPES_ID}\"},
+  {\"name\":\"panel_6\",\"type\":\"visualization\",\"id\":\"${VIS_SUSPICIOUS_AGENTS_ID}\"},
+  {\"name\":\"panel_7\",\"type\":\"visualization\",\"id\":\"${VIS_STATUS_CODES_ID}\"}
+]"
 
 # Create main security dashboard
 curl -X POST "$KIBANA_URL/api/saved_objects/dashboard" \
 -H "Content-Type: application/json" \
 -H "kbn-xsrf: true" \
--d '{
-  "attributes": {
-    "title": "Nginx Security Monitoring Dashboard",
-    "hits": 0,
-    "description": "Dashboard for monitoring Nginx security events and anomalies",
-    "panelsJSON": "[{\"version\":\"8.11.3\",\"type\":\"visualization\",\"gridData\":{\"x\":0,\"y\":0,\"w\":12,\"h\":15,\"i\":\"1\"},\"panelIndex\":\"1\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_1\"},{\"version\":\"8.11.3\",\"type\":\"visualization\",\"gridData\":{\"x\":12,\"y\":0,\"w\":12,\"h\":15,\"i\":\"2\"},\"panelIndex\":\"2\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_2\"},{\"version\":\"8.11.3\",\"type\":\"visualization\",\"gridData\":{\"x\":24,\"y\":0,\"w\":24,\"h\":15,\"i\":\"3\"},\"panelIndex\":\"3\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_3\"},{\"version\":\"8.11.3\",\"type\":\"visualization\",\"gridData\":{\"x\":0,\"y\":15,\"w\":48,\"h\":15,\"i\":\"4\"},\"panelIndex\":\"4\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_4\"},{\"version\":\"8.11.3\",\"type\":\"visualization\",\"gridData\":{\"x\":0,\"y\":30,\"w\":24,\"h\":15,\"i\":\"5\"},\"panelIndex\":\"5\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_5\"},{\"version\":\"8.11.3\",\"type\":\"visualization\",\"gridData\":{\"x\":24,\"y\":30,\"w\":24,\"h\":15,\"i\":\"6\"},\"panelIndex\":\"6\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_6\"},{\"version\":\"8.11.3\",\"type\":\"visualization\",\"gridData\":{\"x\":0,\"y\":45,\"w\":48,\"h\":15,\"i\":\"7\"},\"panelIndex\":\"7\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_7\"}]",
-    "optionsJSON": "{\"useMargins\":true,\"syncColors\":false,\"syncCursor\":true,\"syncTooltips\":false,\"hidePanelTitles\":false}",
-    "timeRestore": true,
-    "timeTo": "now",
-    "timeFrom": "now-15m",
-    "refreshInterval": {
-      "pause": false,
-      "value": 10000
+-d "{
+  \"attributes\": {
+    \"title\": \"Nginx Security Monitoring Dashboard\",
+    \"hits\": 0,
+    \"description\": \"Dashboard for monitoring Nginx security events and anomalies\",
+    \"panelsJSON\": \"[{\\\"version\\\":\\\"8.11.3\\\",\\\"type\\\":\\\"visualization\\\",\\\"gridData\\\":{\\\"x\\\":0,\\\"y\\\":0,\\\"w\\\":12,\\\"h\\\":15,\\\"i\\\":\\\"1\\\"},\\\"panelIndex\\\":\\\"1\\\",\\\"embeddableConfig\\\":{\\\"enhancements\\\":{}},\\\"panelRefName\\\":\\\"panel_1\\\"},{\\\"version\\\":\\\"8.11.3\\\",\\\"type\\\":\\\"visualization\\\",\\\"gridData\\\":{\\\"x\\\":12,\\\"y\\\":0,\\\"w\\\":12,\\\"h\\\":15,\\\"i\\\":\\\"2\\\"},\\\"panelIndex\\\":\\\"2\\\",\\\"embeddableConfig\\\":{\\\"enhancements\\\":{}},\\\"panelRefName\\\":\\\"panel_2\\\"},{\\\"version\\\":\\\"8.11.3\\\",\\\"type\\\":\\\"visualization\\\",\\\"gridData\\\":{\\\"x\\\":24,\\\"y\\\":0,\\\"w\\\":24,\\\"h\\\":15,\\\"i\\\":\\\"3\\\"},\\\"panelIndex\\\":\\\"3\\\",\\\"embeddableConfig\\\":{\\\"enhancements\\\":{}},\\\"panelRefName\\\":\\\"panel_3\\\"},{\\\"version\\\":\\\"8.11.3\\\",\\\"type\\\":\\\"visualization\\\",\\\"gridData\\\":{\\\"x\\\":0,\\\"y\\\":15,\\\"w\\\":48,\\\"h\\\":15,\\\"i\\\":\\\"4\\\"},\\\"panelIndex\\\":\\\"4\\\",\\\"embeddableConfig\\\":{\\\"enhancements\\\":{}},\\\"panelRefName\\\":\\\"panel_4\\\"},{\\\"version\\\":\\\"8.11.3\\\",\\\"type\\\":\\\"visualization\\\",\\\"gridData\\\":{\\\"x\\\":0,\\\"y\\\":30,\\\"w\\\":24,\\\"h\\\":15,\\\"i\\\":\\\"5\\\"},\\\"panelIndex\\\":\\\"5\\\",\\\"embeddableConfig\\\":{\\\"enhancements\\\":{}},\\\"panelRefName\\\":\\\"panel_5\\\"},{\\\"version\\\":\\\"8.11.3\\\",\\\"type\\\":\\\"visualization\\\",\\\"gridData\\\":{\\\"x\\\":24,\\\"y\\\":30,\\\"w\\\":24,\\\"h\\\":15,\\\"i\\\":\\\"6\\\"},\\\"panelIndex\\\":\\\"6\\\",\\\"embeddableConfig\\\":{\\\"enhancements\\\":{}},\\\"panelRefName\\\":\\\"panel_6\\\"},{\\\"version\\\":\\\"8.11.3\\\",\\\"type\\\":\\\"visualization\\\",\\\"gridData\\\":{\\\"x\\\":0,\\\"y\\\":45,\\\"w\\\":48,\\\"h\\\":15,\\\"i\\\":\\\"7\\\"},\\\"panelIndex\\\":\\\"7\\\",\\\"embeddableConfig\\\":{\\\"enhancements\\\":{}},\\\"panelRefName\\\":\\\"panel_7\\\"}]\",
+    \"optionsJSON\": \"{\\\"useMargins\\\":true,\\\"syncColors\\\":false,\\\"syncCursor\\\":true,\\\"syncTooltips\\\":false,\\\"hidePanelTitles\\\":false}\",
+    \"timeRestore\": true,
+    \"timeTo\": \"now\",
+    \"timeFrom\": \"now-15m\",
+    \"refreshInterval\": {
+      \"pause\": false,
+      \"value\": 10000
     },
-    "kibanaSavedObjectMeta": {
-      "searchSourceJSON": "{\"query\":{\"query\":\"\",\"language\":\"kuery\"},\"filter\":[]}"
+    \"kibanaSavedObjectMeta\": {
+      \"searchSourceJSON\": \"{\\\"query\\\":{\\\"query\\\":\\\"\\\",\\\"language\\\":\\\"kuery\\\"},\\\"filter\\\":[]}\"
     }
-  }
-}'
+  },
+  \"references\": ${REFERENCES_JSON}
+}"
 
+echo ""
 echo "Dashboard creation complete!"
 echo ""
 echo "Access your dashboard at: $KIBANA_URL"
