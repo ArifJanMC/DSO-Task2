@@ -60,7 +60,7 @@ EOF
 # Create SMTP auth file for ElastAlert (update with your credentials)
 cat > elastalert/smtp_auth.yaml << 'EOF'
 user: "tst4@24abuse.ru"
-password: "8w136e19u5"
+password: "somepass"
 EOF
 
 # Create error pages for Nginx
