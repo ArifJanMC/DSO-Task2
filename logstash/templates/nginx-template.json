@@ -1,0 +1,33 @@
+{
+  "index_patterns": ["nginx-*"],
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "index.refresh_interval": "5s"
+  },
+  "mappings": {
+    "properties": {
+      "@timestamp": { "type": "date" },
+      "remote_addr": { "type": "ip" },
+      "geoip": {
+        "properties": {
+          "location": { "type": "geo_point" },
+          "latitude": { "type": "float" },
+          "longitude": { "type": "float" },
+          "country_name": { "type": "keyword" },
+          "city_name": { "type": "keyword" },
+          "country_code": { "type": "keyword" }
+        }
+      },
+      "status": { "type": "integer" },
+      "body_bytes_sent": { "type": "long" },
+      "request_time": { "type": "float" },
+      "http_user_agent": { "type": "text", "fields": { "keyword": { "type": "keyword" } } },
+      "request_uri": { "type": "text", "fields": { "keyword": { "type": "keyword" } } },
+      "request_method": { "type": "keyword" },
+      "attack_type": { "type": "keyword" },
+      "severity": { "type": "keyword" },
+      "tags": { "type": "keyword" }
+    }
+  }
+}

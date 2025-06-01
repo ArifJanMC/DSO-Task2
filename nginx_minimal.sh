@@ -1,3 +1,12 @@
+#!/bin/bash
+# Minimal nginx fix to get it running
+
+cd /home/arifjan/dot-bc
+
+echo "Creating minimal nginx configuration..."
+
+# Create the most basic nginx.conf that will work
+cat > nginx/nginx.conf << 'EOF'
 user nginx;
 worker_processes 1;
 error_log /var/log/nginx/error.log warn;
@@ -42,3 +51,27 @@ http {
         }
     }
 }
+EOF
+
+# Also create a minimal conf.d/default.conf
+mkdir -p nginx/conf.d
+cat > nginx/conf.d/default.conf << 'EOF'
+# Minimal configuration - everything is in nginx.conf
+EOF
+
+echo "Restarting nginx container..."
+docker restart nginx_logging
+
+sleep 5
+
+# Check if it's running
+if docker ps | grep -q nginx_logging; then
+    echo "✅ Nginx is now running!"
+    
+    # Test it
+    echo "Testing nginx..."
+    curl -s http://localhost/health && echo "✅ Nginx is responding!"
+else
+    echo "❌ Nginx still failing. Checking logs..."
+    docker logs --tail 20 nginx_logging
+fi

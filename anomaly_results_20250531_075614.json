@@ -1,0 +1,13 @@
+{
+  "timestamp": "2025-05-31T07:56:14.421234",
+  "target": "http://localhost",
+  "results": {
+    "404_errors": 50,
+    "403_errors": 4,
+    "rate_limit_hits": 0,
+    "sql_injections": 0,
+    "xss_attempts": 0,
+    "suspicious_agents": 20,
+    "total_requests": 184
+  }
+}
