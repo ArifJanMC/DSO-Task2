@@ -13,7 +13,6 @@ query_key: remote_addr
 
 alert:
 - "email"
-- "webhook"
 
 email:
 - "me@arifgjan.ru"

@@ -4,7 +4,7 @@
 KIBANA_URL="http://localhost:5601"
 
 echo "Waiting for Kibana to be ready..."
-until curl -s "$KIBANA_URL/api/status" | grep -q '"state":"green"'; do
+until curl -s "$KIBANA_URL/api/status" | grep -q '"summary":"All services are available"'; do
     sleep 5
 done
 

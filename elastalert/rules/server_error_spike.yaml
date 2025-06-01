@@ -14,7 +14,6 @@ filter:
 
 alert:
 - "email"
-- "webhook"
 
 email:
 - "me@arifgjan.ru"
