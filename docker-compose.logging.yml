@@ -36,6 +36,7 @@ services:
     volumes:
       - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
       - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ./logstash/templates:/usr/share/logstash/templates:ro
     ports:
       - "5044:5044"
       - "5000:5000/tcp"
@@ -99,6 +100,9 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - nginx_logs:/var/log/nginx
       - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/403.html:/usr/share/nginx/html/403.html:ro
+      - ./nginx/404.html:/usr/share/nginx/html/404.html:ro
+      - ./nginx/50x.html:/usr/share/nginx/html/50x.html:ro
     networks:
       - logging_net
       - app_net
@@ -126,6 +130,7 @@ services:
     volumes:
       - ./elastalert/config.yaml:/opt/elastalert/config.yaml:ro
       - ./elastalert/rules:/opt/elastalert/rules:ro
+      - ./elastalert/smtp_auth.yaml:/opt/elastalert/smtp_auth.yaml:ro
     networks:
       - logging_net
     depends_on:

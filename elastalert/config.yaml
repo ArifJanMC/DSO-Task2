@@ -28,12 +28,12 @@ alert_time_limit:
   days: 2
 
 # Email настройки (настройте под ваш SMTP сервер)
-smtp_host: smtp.gmail.com
-smtp_port: 587
+smtp_host: smtp.timeweb.ru
+smtp_port: 25
 smtp_ssl: false
 smtp_auth_file: /opt/elastalert/smtp_auth.yaml
-from_addr: alerts@example.com
-email_reply_to: noreply@example.com
+from_addr: tst4@24abuse.ru
+email_reply_to: tst4@24abuse.ru
 
 # Webhook настройки для отправки в Slack/Discord/Telegram
 # webhook_url: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
